@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'account',
     'sales',
     'import_export',
+    'django_select2',
 ]
 
 MIDDLEWARE = [

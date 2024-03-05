@@ -1,7 +1,7 @@
-from datetime import timedelta
 from django.db import models
 from account.models import User
 from django.utils import timezone
+import datetime
 from django.core.exceptions import ValidationError
 
 class Client(models.Model):
@@ -32,6 +32,7 @@ class Client(models.Model):
     credit_limit = models.DecimalField(max_digits=15,default=0, decimal_places=2, null=True, blank=True)
     overdue120=models.FloatField(null=True, blank=True,default=0)
     grant_period=models.FloatField(default=0)
+    pause = models.BooleanField(default=False)
 
 
     def __str__(self):
@@ -68,10 +69,10 @@ class Bill(models.Model):
             return self.bill_no
         else:
             account_name = self.short_name.account_name if self.short_name else None
-            return account_name or f"Bill {self.pk}"  # You can customize this fallback representation
+            return account_name or f"Bill {self.pk}"  
     
 class Action(models.Model):
-    action_date = models.DateField()
+    action_date = models.DateTimeField(default=datetime.datetime.combine(datetime.date.today(), datetime.time(9, 30)))
     TYPE_CHOICES = (
         ('auto', 'auto'),
         ('manual', 'manual'),
@@ -96,7 +97,6 @@ class Action(models.Model):
     followup_date = models.DateField(blank=True, default=None, null=True)
     description = models.TextField(blank=True)
     completed = models.BooleanField(default=False)
-    extended_date = models.IntegerField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True,)
 
     def __str__(self):

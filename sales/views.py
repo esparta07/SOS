@@ -297,8 +297,12 @@ def upload_excel(request):
                 update_collector_balances()
                 company_balance()
                 delete_actions()  
+                
+                today_date = datetime.today()
+                formatted_today_date = today_date.strftime('%Y-%m-%d %H:%M:%S')  
+
                 update_subject = 'Excel File Update Notification'
-                update_message = f'The Excel file has been successfully uploaded on {timezone.now()}'
+                update_message = f'The Excel file has been successfully uploaded on {formatted_today_date}'
 
                 send_update_email(update_subject, update_message) 
                 
@@ -328,6 +332,7 @@ def collection(request):
      # Filter clients for the currently logged-in user
     clients = Client.objects.filter(collector=request.user)
 
+    print(clients)
     # Filter actions for the currently logged-in user
     actions = Action.objects.filter(short_name__collector=request.user).order_by('-created')
     
@@ -337,8 +342,10 @@ def collection(request):
     auto_count = Action.objects.filter(type='auto', completed=False).count()
    
     # Set the initial value of the "Action Date" field to today's date
-    today_date = date.today()
-    add_form = ActionCreationForm(initial={'action_date': today_date})
+    today_date = datetime.today()
+    # Corrected usage
+    add_form = ActionCreationForm(user=request.user, initial={'action_date': today_date})
+
     update_form = ActionUpdateForm()
     if request.method == 'POST':
         
@@ -406,7 +413,7 @@ def collection(request):
                 # Redirect to the same view to avoid resubmitting the form on page reload
                 return redirect('collection')
     else:
-        add_form = ActionCreationForm()
+        add_form = ActionCreationForm(user=request.user)
         update_form = ActionUpdateForm()
 
     context = {'actions': actions, 

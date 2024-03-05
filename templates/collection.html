@@ -259,7 +259,7 @@
               <form method="post" id="actionForm" data-bills-url="{% url 'load_bills' %}">
                 {% csrf_token %}
                 <!-- Render each form field individually -->
-                <label >Action Date:</label>
+                 <label >Action Date:</label>
                 {{ add_form.action_date }}
                 <br>
                 
@@ -267,22 +267,29 @@
                   <label>Action Type</label>
                   <br/>
                   <div class="col mt-1">
-                      <div class="btn-group btn-group-toggle waves-effect waves-light bg-color-primary" >
-                          <label class="btn btn-danger {% if add_form.action_type.value == 'Email' %}active{% endif %}">
-                              <input type="radio"  class="btn btn-secondary waves-effect waves-light" data-toggle="tooltip" data-placement="bottom" title="Selected" name="{{ add_form.action_type.name }}" value="Email" {% if add_form.action_type.value == 'Email' %}checked{% endif %}/>
-                              <i class="mdi mdi-gmail"></i> Email
-                          </label>
-                          
-                          <label class="btn btn-warning {% if add_form.action_type.value == 'SMS' %}active{% endif %}">
-                              <input type="radio" name="{{ add_form.action_type.name }}" value="SMS" {% if add_form.action_type.value == 'SMS' %}checked{% endif %}/>
-                              <i class="mdi mdi-message"></i> SMS
-                          </label>
-                          
-                          <label class="btn btn-success {% if add_form.action_type.value == 'Call' %}active{% endif %}">
-                              <input type="radio" name="{{ add_form.action_type.name }}" value="Call" {% if add_form.action_type.value == 'Call' %}checked{% endif %}/>
-                              <i class="mdi mdi-phone"></i> Call
-                          </label>
-                      </div>
+                    <div class="form-check form-check-inline">
+                      <input type="radio" class="form-check-input" id="email" name="{{ add_form.action_type.name }}" value="Email" {% if add_form.action_type.value == 'Email' %}checked{% endif %}>
+                      <label class="form-check-label" for="email" style="color: #f85359; font-size: 16px;">
+                          <i class="mdi mdi-gmail"></i> Email
+                      </label>
+                  </div>
+                  
+                  <div class="form-check form-check-inline">
+                      <input type="radio" class="form-check-input" id="sms" name="{{ add_form.action_type.name }}" value="SMS" {% if add_form.action_type.value == 'SMS' %}checked{% endif %}>
+                      <label class="form-check-label" for="sms" style="color: #f7981c; font-size: 16px;">
+                          <i class="mdi mdi-message"></i> SMS
+                      </label>
+                  </div>
+                  
+                  <div class="form-check form-check-inline">
+                      <input type="radio" class="form-check-input" id="call" name="{{ add_form.action_type.name }}" value="Call" {% if add_form.action_type.value == 'Call' %}checked{% endif %}>
+                      <label class="form-check-label" for="call" style="color: #09c199; font-size: 16px;">
+                          <i class="mdi mdi-phone"></i> Call
+                      </label>
+                  </div>
+                  
+                  
+                  
                   </div>
               </div>
                 <br>

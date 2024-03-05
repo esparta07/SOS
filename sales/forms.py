@@ -43,29 +43,36 @@ class ActionUpdateForm(forms.ModelForm):
 class ActionCreationForm(forms.ModelForm):
     class Meta:
         model = Action
-        exclude = ['action_amount']  # Exclude action_amount from form fields
+        exclude = ['action_amount']
 
-    action_date = forms.DateField(initial=timezone.now(), widget=forms.DateInput(attrs={'readonly': 'readonly'}))
-
+    action_date = forms.DateField(initial=timezone.now, widget=forms.DateInput(attrs={'readonly': 'readonly'}))
+    
+    # Use a callable for the queryset to dynamically filter based on the user
+    short_name = forms.ModelChoiceField(
+        queryset=Client.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control select2'}),
+    )
+    
     action_type = forms.ChoiceField(
         choices=Action.ACTION_CHOICES,
         widget=forms.RadioSelect(attrs={'class': 'btn btn-primary waves-effect waves-light'})
     )
     
     followup_date = forms.DateField(
-        widget=forms.DateInput(
-            attrs={'class': 'form-control', 'type': 'date'}),
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         required=False
     )
-    
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-
-       
+        # Dynamically set the queryset for the short_name field based on the user
+        self.fields['short_name'].queryset = Client.objects.filter(collector=user)
+        
         # Add form control to other fields if needed
         for field_name, field in self.fields.items():
             field.widget.attrs.update({'class': 'form-control'})
+
 
 class SendSMSForm(forms.ModelForm):
     # Add non-model fields

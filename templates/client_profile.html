@@ -181,7 +181,7 @@
                                         <label for="id_extended_date">Days to Extend:</label>
                                         <input type="number" name="extended_date" id="id_extended_date" required min="1">
                                         
-                                        <button class="btn btn-primary" type="submit">Extend Actions Date</button>
+                                        <button class="btn btn-primary" type="submit">Extend </button>
                                     </form>
                                 </div>
                             </div>
@@ -190,7 +190,7 @@
                                 <table id="manual-datatable" class="table custom-datatable">
                                     <thead>
                                         <tr class="alert alert-danger">
-                                            <th>Completed</th>
+                                            
                                             <th>Action Date</th>
                                             <th>Action Type</th>
                                             <th>Action Amount</th>
@@ -202,9 +202,7 @@
                                     <tbody>
                                         {% for action in incomplete_actions %}
                                         <tr>
-                                            <td class="text-center" style="width: 10px;">
-                                                <input type="checkbox" name="completed_actions" value="{{ action.id }}">
-                                            </td>
+                                            
                                             <td>{{ action.action_date }}</td>
                                             {% if action.action_type == 'SMS' %}
                                                 <td>

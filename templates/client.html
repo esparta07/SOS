@@ -2,7 +2,6 @@
 
 {% block content %}
 
-
 <div class="col-xl-12">
     {% include "alerts.html" %}
     <div class="card">
@@ -31,7 +30,7 @@
                                 <table id="basic-datatable" class="table">
                                     <thead>
                                         <tr style="background:#d1e4f6;">
-                                            <th>#</th>
+                                            
                                             <th>Client Id</th>
                                             <th>Client Name</th>
                                             <th>Group</th>
@@ -44,12 +43,7 @@
                                     <tbody>
                                         {% for client in clients %}
                                             <tr style="background:#dff0d8;">
-                                                <th scope="row">
-                                                    <a href="#" class="deleteButton" data-url="{% url 'delete_client' client_id=client.id %}">
-                                                        <i class="feather-trash-2 text-danger"></i>
-                                                    </a>
-                                                    &emsp;
-                                                </th>
+                                                
                                                 <td>{{ client.short_name }}</td>
                                                 <td>
                                                     <b>
