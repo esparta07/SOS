@@ -9,6 +9,7 @@
         <div class="card">
             <div class="card-body" style="background:#FAD9A1;">
                 <div class="row mt-3 mb-0">
+                    
                     <!-- Company Information Column -->
                     <div class="col-md-4 font-weight-bold text-dark">
                         <!-- Client Information Section -->
@@ -128,7 +129,57 @@
                         </div>
                         
                     </div>
+                    
                 </div>
+                <style>
+                    #pause-button {
+                        position: relative;
+                    }
+                    
+                    .hover-text {
+                        margin-top:2px;
+                        position: absolute;
+                        top: 100%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        display: none;
+                        background-color: #fff; /* Add a background color for the box */
+                        padding: 5px 10px; /* Add padding for the box */
+                        border: 1px solid #ccc; /* Add a border for the box */
+                        border-radius: 5px; /* Add border-radius for rounded corners */
+                        white-space: nowrap; /* Ensure the text stays in one line */
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle box shadow */
+                    }
+                    
+                    #pause-button:hover .hover-text {
+                        display: block;
+                        color:black;
+                    }
+                    
+                    
+                </style>
+                <form class="float-right" method="post" action="{% url 'pause_client' client.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning" id="pause-button" 
+                    style="width: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        
+                        {% if client.pause %}
+                            <i class="fas fa-play"></i> 
+                        {% else %}
+                            <i class="fas fa-pause"></i>
+                        {% endif %}
+                        <span class="hover-text">
+                            {% if client.pause %}
+                                Start Actions
+                            {% else %}
+                                Pause Actions
+                            {% endif %}
+                        </span>
+                    </button>
+                    
+                </form>
+                
+                
             </div>
         </div>
 

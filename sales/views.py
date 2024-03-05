@@ -554,6 +554,17 @@ def client_profile(request, client_id):
 
     return render(request, 'client_profile.html', context)
 
+def pause_client(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    
+    if request.method == 'POST':
+        # Toggle the 'pause' field
+        client.pause = not client.pause
+        client.save()
+    
+    # Redirect back to the client profile page
+    return redirect('client_profile', client_id=client_id)
+
 @login_required(login_url='login')
 def edit_client(request, client_id):
     client = get_object_or_404(Client, id=client_id)
@@ -604,57 +615,59 @@ def create_actions_for_bill(bill):
     # Add a check to delete existing incomplete actions for the client
     Action.objects.filter(short_name=bill.short_name, completed=False).delete()
     
-    grant_period_days = int(bill.short_name.grant_period)
-    target_date = bill.due_date + timedelta(days=grant_period_days)
+    if not bill.short_name.pause:  # Corrected this line
+    
+        grant_period_days = int(bill.short_name.grant_period)
+        target_date = bill.due_date + timedelta(days=grant_period_days)
 
-    # Create Action 1
-    action1 = Action.objects.create(
-        action_date=target_date,
-        type='auto',
-        action_type='SMS',
-        action_amount=bill.short_name.balance,
-        short_name=bill.short_name,
-        completed=False,
-        subtype='Reminder'
-    )
-    print(f"Action 1 Created: {action1}")
-
-    # Create Action 2
-    action2 = Action.objects.create(
-        action_date=target_date + timedelta(days=1),
-        type='auto',
-        action_type='SMS',
-        action_amount=bill.short_name.balance,
-        short_name=bill.short_name,
-        completed=False,
-        subtype='Gentle'
-    )
-    print(f"Action 2 Created: {action2}")
-
-    # Create Action 3
-    action3 = Action.objects.create(
-        action_date=target_date + timedelta(days=3),
-        type='auto',
-        action_type='SMS',
-        action_amount=bill.short_name.balance,
-        short_name=bill.short_name,
-        completed=False,
-        subtype='Strong'
-    )
-    print(f"Action 3 Created: {action3}")
-
-    # Create Action 4 (if group is 'Normal')
-    if bill.short_name.group == 'Normal':
-        action4 = Action.objects.create(
-            action_date=target_date + timedelta(days=7),
+        # Create Action 1
+        action1 = Action.objects.create(
+            action_date=target_date,
             type='auto',
             action_type='SMS',
             action_amount=bill.short_name.balance,
             short_name=bill.short_name,
             completed=False,
-            subtype='Final'
+            subtype='Reminder'
         )
-        print(f"Action 4 Created: {action4}")
+        print(f"Action 1 Created: {action1}")
+
+        # Create Action 2
+        action2 = Action.objects.create(
+            action_date=target_date + timedelta(days=1),
+            type='auto',
+            action_type='SMS',
+            action_amount=bill.short_name.balance,
+            short_name=bill.short_name,
+            completed=False,
+            subtype='Gentle'
+        )
+        print(f"Action 2 Created: {action2}")
+
+        # Create Action 3
+        action3 = Action.objects.create(
+            action_date=target_date + timedelta(days=3),
+            type='auto',
+            action_type='SMS',
+            action_amount=bill.short_name.balance,
+            short_name=bill.short_name,
+            completed=False,
+            subtype='Strong'
+        )
+        print(f"Action 3 Created: {action3}")
+
+        # Create Action 4 (if group is 'Normal')
+        if bill.short_name.group == 'Normal':
+            action4 = Action.objects.create(
+                action_date=target_date + timedelta(days=7),
+                type='auto',
+                action_type='SMS',
+                action_amount=bill.short_name.balance,
+                short_name=bill.short_name,
+                completed=False,
+                subtype='Final'
+            )
+            print(f"Action 4 Created: {action4}")
 
 def get_client_names(request):
     # Query all clients and their associated bill numbers

@@ -25,6 +25,7 @@ urlpatterns = [
     path('get_client_names/', views.get_client_names, name='get_client_names'),
     path('ajax/load-bills/', views.load_bills, name='load_bills'),  # AJAX
 
+    path('client/<int:client_id>/pause/', views.pause_client, name='pause_client'),
     path('extend_action_dates/<int:client_id>/', views.extend_action_dates, name='extend_action_dates'),
 
 
