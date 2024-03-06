@@ -41,7 +41,7 @@ class Client(models.Model):
         elif self.short_name:
             return self.short_name
         else:
-            return f"Client {self.pk}"  # You can customize this fallback representation
+            return f"Client {self.pk}"  
         
 
 

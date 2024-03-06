@@ -6,7 +6,7 @@ from .models import Action
 from .filters import ActionFilter
 from .models import Client, Bill, Action,User,DailyBalance,UserBalance,CompanyBalance
 from django.contrib import messages
-from .forms import ExcelUploadForm, ClientForm, ActionUpdateForm, ActionCreationForm, ExtendActionForm,SendSMSForm
+from .forms import ExcelUploadForm, ClientForm, ActionUpdateForm, ActionCreationForm, ExtendActionForm,SendSMSForm,ClientUploadForm
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.http import HttpResponse, JsonResponse
 from django.core.files.storage import default_storage
@@ -246,6 +246,7 @@ def upload_excel(request):
                             continue
 
                         print("Before creating new_bill")
+                        
                         # Create a new Bill instance
                         new_bill=Bill.objects.create(
                             type=row['type'],
@@ -464,7 +465,18 @@ def update_client_balance(client):
 @user_passes_test(check_role_admin)
 def client(request):
     clients = Client.objects.all()
-    return render(request , 'client.html' ,  {'clients': clients})
+    if request.method == 'POST':
+        form = ClientUploadForm(request.POST, request.FILES)
+        
+    else:
+        form = ClientUploadForm()
+
+    context = {
+        'form': form,
+        'clients': clients,
+        
+    }    
+    return render(request , 'client.html' , context)
 
 @login_required(login_url='login')
 def client_profile(request, client_id):
@@ -1069,3 +1081,111 @@ def myclient(request):
         
     }
     return render(request, 'myclient.html',context)
+
+
+def process_uploaded_file(request):
+    if request.method == 'POST':
+        form = ClientUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            # Validate file format
+            uploaded_file = request.FILES['file']
+            if not uploaded_file.name.endswith('.xlsx'):
+                messages.error(request, "Invalid file format. Please upload a .xlsx file.")
+                return redirect('client')
+
+            try:
+                # Retrieve the uploaded file from the form
+                excel_data = pd.read_excel(uploaded_file)
+
+                # Perform data processing steps
+                df = excel_data.iloc[3:]
+                df.columns = df.iloc[0]
+
+                # Validate the required columns
+                required_columns = {'Short Name', 'Account Name', 'Phone (O) & Contact', 'Address', 'PAN No.', 'Balance'}
+                if not set(df.columns).issuperset(required_columns):
+                    # If any of the required columns is missing, handle the validation error
+                    messages.error(request, "The format of the excel file is invalid. Check for invalid column names or missing columns.")
+                    return redirect('client')  # Redirect back to the 'client' view
+
+                df = df.iloc[1:]
+                df = df.reset_index(drop=True)
+                df = df.rename(columns={df.columns[2]: 'POC'})
+                df[['Phone', 'Contact Name']] = df['POC'].str.extract(r'([^a-zA-Z]+)-\s*([^0-9]+)')
+                df = df.drop(columns=['POC'])
+
+                df = df.rename(columns={
+                    'Short Name': 'short_name',
+                    'Account Name': 'account_name',
+                    'Address': 'address',
+                    'PAN No.': 'pan_number',
+                    'Balance': 'balance',
+                    'Phone': 'phone_number',
+                    'Contact Name': 'contact_name'
+                    # Add other column mappings as needed
+                })
+
+                # Additional processing logic
+                created_count = 0
+                updated_count = 0
+
+                for index, row in df.iterrows():
+                    try:
+                        # Check if short name already exists in the database
+                        short_name = row.get('short_name')
+                        existing_client = Client.objects.filter(short_name=short_name).first()
+
+                        if existing_client:
+                            # Client with this short name already exists, you can update or skip
+                            existing_client.account_name = row.get('account_name', existing_client.account_name)
+                            existing_client.address = row.get('address', existing_client.address)
+                            existing_client.pan_number = row.get('pan_number', existing_client.pan_number)
+
+                            # Ensure that the balance is within the allowed range
+                            new_balance = row.get('balance', existing_client.balance)
+                            existing_client.balance = min(max(new_balance, -10**6), 10**8)  # Adjust as needed
+
+                            existing_client.phone_number = row.get('phone_number', existing_client.phone_number)
+                            existing_client.email = row.get('email', existing_client.email)
+                            existing_client.contact_name = row.get('contact_name', existing_client.contact_name)
+
+                            existing_client.save()
+                            updated_count += 1
+                        else:
+                            # Create a new client using DataFrame values
+                            new_client = Client.objects.create(
+                                short_name=row.get('short_name'),
+                                account_name=row.get('account_name'),
+                                address=row.get('address'),
+                                pan_number=row.get('pan_number'),
+
+                                # Ensure that the balance is within the allowed range
+                                balance = min(max(row.get('balance', 0), -10**6), 10**8),  # Adjust as needed
+
+                                phone_number=row.get('phone_number'),
+                                contact_name=row.get('contact_name'),
+                                
+                                # Add other fields as needed
+                            )
+                            created_count += 1
+                    except Exception as e:
+                        # Print the error and information about the row causing the issue
+                        print(f"Error processing row {index + 4} (Excel row {index + 1}): {e}")
+                        print(row)
+                        # Optionally, log the error for further investigation
+                if created_count >0:
+                    # Display success message
+                    messages.success(request, f"{created_count} new clients created successfully")
+                else:
+                    messages.success(request, "No new client was added")
+                
+                # Redirect back to the 'client' view after processing
+                return redirect('client')
+            except Exception as e:
+                # Handle any exception during file processing
+                messages.error(request, f"Error processing the file: {e}")
+                return redirect('client')
+
+    return redirect('client')
+
+

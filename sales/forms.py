@@ -7,6 +7,9 @@ from django.utils import timezone
 
 class ExcelUploadForm(forms.Form):
     file = forms.FileField(widget=forms.ClearableFileInput(attrs={'class': 'dropify'}))
+    
+class ClientUploadForm(forms.Form):
+    file = forms.FileField(widget=forms.ClearableFileInput(attrs={'class': 'dropify'}))
 
 class ClientForm(forms.ModelForm):
     class Meta:
