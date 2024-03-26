@@ -34,6 +34,6 @@ class CompanyBalanceData(ImportExportActionModelAdmin):
     
 @admin.register(LogEntry)
 class LogEntryAdmin(admin.ModelAdmin):
-    list_display = ['message', 'is_error', 'timestamp']  # Define which fields to display in the admin list view
-    search_fields = ['message']  # Define fields for searching
-    list_filter = ['is_error']  # Define filters for the list view
+    list_display = ['message', 'is_error', 'timestamp']  
+    search_fields = ['message']  
+    list_filter = ['is_error'] 

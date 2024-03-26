@@ -1,12 +1,5 @@
 from celery import shared_task
-from django.contrib import messages
-from django.forms import ValidationError
-from django.shortcuts import redirect, render
-from requests import request
-from .forms import ExcelUploadForm
-import pandas as pd
-from .models import Bill, Client
-from datetime import datetime
+
 
 from sales.utils import bill_process
 
