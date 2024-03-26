@@ -147,3 +147,11 @@ class CompanyBalance(models.Model):
 
     class Meta:
         unique_together = ['date']
+        
+class LogEntry(models.Model):
+    timestamp = models.DateTimeField(auto_now_add=True)
+    message = models.TextField()
+    is_error = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.timestamp}: {'Error' if self.is_error else 'Success'} - {self.message}"

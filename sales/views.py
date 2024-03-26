@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from .models import Action
 from .filters import ActionFilter
-from .models import Client, Bill, Action,User,DailyBalance,UserBalance,CompanyBalance
+from .models import Client, Bill, Action,LogEntry
 from django.contrib import messages
 from .forms import ExcelUploadForm, ClientForm, ActionUpdateForm, ActionCreationForm, ExtendActionForm,SendSMSForm,ClientUploadForm
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -19,7 +19,6 @@ import requests
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.serializers.json import DjangoJSONEncoder
-import logging
 from django.template import Context, Template
 import json
 from django.urls import reverse
@@ -28,6 +27,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from account.utils import check_role_admin, check_role_user
 from sales.tasks import bill_upload
+
+
+
 
 # Create your views here.
 @login_required(login_url='login')
@@ -41,7 +43,9 @@ def upload_excel(request):
     if request.method == 'POST':
         form = ExcelUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            
             try:
+                
                 # Get file contents
                 file_contents = request.FILES['file'].read()
 
@@ -716,5 +720,11 @@ def process_uploaded_file(request):
                 return redirect('client')
 
     return redirect('client')
+
+
+def log_page(request):
+    log_entries = LogEntry.objects.order_by('-timestamp')  # Sort log entries by timestamp in descending order
+    return render(request, 'log_page.html', {'log_entries': log_entries})
+
 
 
