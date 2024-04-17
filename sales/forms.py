@@ -1,6 +1,6 @@
 from datetime import date
 from django import forms
-from .models import Client,Action,Bill
+from .models import Client,Action,Bill,CreditEntry
 
 from django.utils import timezone
 
@@ -93,8 +93,20 @@ class SendSMSForm(forms.ModelForm):
             field.widget.attrs.update({'class': 'form-control'})
 
 class ExtendActionForm(forms.Form):
+
     extended_date = forms.IntegerField(
         label='Number of Days to Extend',
         required=True,
         min_value=1  # Set a minimum value as needed
     )
+
+class CreditEntryForm(forms.ModelForm):
+    class Meta:
+        model = CreditEntry
+        fields = ['account_name', 'amount', 'collector', 'date']
+
+    def clean_amount(self):
+        amount = self.cleaned_data['amount']
+        if amount < 0:
+            raise forms.ValidationError('Amount must be positive')
+        return amount

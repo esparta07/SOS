@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Client, Bill,Action,DailyBalance,UserBalance,CompanyBalance
+from .models import Client, Bill,Action,DailyBalance,UserBalance,CompanyBalance,CreditEntry
 from import_export.admin import ImportExportActionModelAdmin
 
 @admin.register(Client)
@@ -31,3 +31,8 @@ class UserBalanceData(ImportExportActionModelAdmin):
 @admin.register(CompanyBalance)
 class CompanyBalanceData(ImportExportActionModelAdmin):
     list_display = ['total_balance', 'date',]
+@admin.register(CreditEntry)
+class CreditEntryAdmin(ImportExportActionModelAdmin):
+    list_display=['account_name','amount','collector','date','settle']
+    list_editable=['settle',]
+

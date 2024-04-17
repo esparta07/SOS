@@ -3,6 +3,7 @@ from account.models import User
 from django.utils import timezone
 import datetime
 from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 
 class Client(models.Model):
     short_name = models.CharField(max_length=255, unique=True , null=True, blank=True)
@@ -147,3 +148,16 @@ class CompanyBalance(models.Model):
 
     class Meta:
         unique_together = ['date']
+
+class CreditEntry(models.Model):
+    
+    account_name = models.ForeignKey(Client, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    date = models.DateField(default=timezone.now)
+    collector = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': User.USER}, related_name='credit', null=True, blank=True)
+    settle = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.collector.full_name if self.collector else 'None'} - {self.amount}"
+
+

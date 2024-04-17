@@ -69,9 +69,35 @@
                     </div>
 
                     <div class="d-flex align-items-center">
+                        <div class="dropdown d-inline-block">
+                            
 
-
-
+                            <!-- Button for notifications -->
+                            <button type="button" class="btn header-item waves-effect dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="mdi mdi-bell" style="font-size: 1.2rem;"></i>
+                                <!-- Notification counter badge -->
+                                <span id="notification-counter" class="badge badge-danger">{{ entries|length }}</span> <!-- Counter badge -->
+                            </button>
+                            
+                            <!-- Dropdown menu for notifications -->
+                            <div class="dropdown-menu dropdown-menu-right custom-dropdown" style="width: 400px; background-color: #f7f7f7;">
+                                <!-- Recent notifications section -->
+                                <div class="recent-notifications" style="max-height: 300px; overflow-y: auto;">
+                                    <ul style="padding: 0;">
+                                        {% if entries %} {% for notification in entries|slice:":3" %}
+                                        <li style="margin-bottom: 10px;">
+                                            <a style="display: block; padding: 10px; background-color: #f7f7f7; border-radius: 5px; text-decoration: none; color: #333;"
+                                               href="{% url 'notification' %}"> <!-- Replace "#" with the appropriate link if needed -->
+                                                {{ notification.message }} <!-- Assuming 'message' is the field containing notification message -->
+                                            </a>
+                                        </li>
+                                        {% endfor %} {% else %}
+                                        <p>No unsettled credit entries</p>
+                                        {% endif %}
+                                    </ul>
+                                    <a class="dropdown-item view-more-btn" href="{% url 'notification' %}">View More</a>
+                                </div>
+                            </div>
                         
                         <div class="dropdown d-inline-block ml-2">
                             <button type="button" class="btn header-item waves-effect"
@@ -135,6 +161,7 @@
                                 <a class="waves-effect" href="{% url 'account:admin_change_password' %}"><i class="mdi mdi-security"></i><span>Change Password</span>
                                 </a>
                                 </li>
+                                
                             {% elif user.role == user.USER %}
                                 <li>
                                     <a href="{% url "account:userdashboard" %}" class="waves-effect"><i class="mdi mdi-home-analytics"></i><span>Dashboard</span></a>
@@ -149,6 +176,11 @@
                                 <li>
                                     <a class="waves-effect" href="{% url 'account:user_change_password' %}"><i class="mdi mdi-security"></i><span>Change Password</span>
                                     </a>
+                                    </li>
+                                    <li>
+                                        <a id="credit-entry-link" class="waves-effect" href="{% url 'credit_entry' %}">
+                                            <i class="mdi mdi-credit-card"></i><span>Credit</span>
+                                        </a>
                                     </li>
                             {% endif %}
 
