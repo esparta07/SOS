@@ -10,13 +10,13 @@ class ClientData(ImportExportActionModelAdmin):
 
 @admin.register(Bill)
 class BillData(ImportExportActionModelAdmin):
-    list_display = ['short_name', 'type', 'bill_no', 'inv_amount', 'due_date','balance',]
-    search_fields = ['short_name__account_name', 'bill_no'] 
+    list_display = ['account_name','bill_no', 'inv_amount', 'due_date',]
+    search_fields = ['account_name__account_name', 'bill_no'] 
    
 
 @admin.register(Action)
 class ActionData(ImportExportActionModelAdmin):
-    list_display = ['action_date','short_name', 'action_type','type','completed','subtype','followup_date']
+    list_display = ['action_date','account_name', 'action_type','type','completed','subtype','followup_date']
     search_fields = ['type']
     list_editable = ['completed','type','action_type']  
     

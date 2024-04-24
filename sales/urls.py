@@ -28,9 +28,9 @@ urlpatterns = [
     path('client/<int:client_id>/pause/', views.pause_client, name='pause_client'),
     path('extend_action_dates/<int:client_id>/', views.extend_action_dates, name='extend_action_dates'),
     path('process_uploaded_file/', views.process_uploaded_file, name='process_uploaded_file'),
-    path('log/',views.log_page,name="log")
+    path('log/',views.log_page,name="log"),
 
 
-
+   
     
 ]

@@ -29,8 +29,6 @@ from account.utils import check_role_admin, check_role_user
 from sales.tasks import bill_upload
 
 
-
-
 # Create your views here.
 @login_required(login_url='login')
 def profile(request):

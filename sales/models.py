@@ -46,30 +46,44 @@ class Client(models.Model):
 
 
 class Bill(models.Model):
-    type = models.CharField(max_length=40,blank=True,null=True)
     bill_no = models.CharField(max_length=40, blank=True)
     due_date = models.DateField(null=True, blank=True)
-    inv_amount = models.FloatField(null=True, blank=True)
-    cycle1 = models.FloatField(null=True, blank=True,default=0)
-    cycle2 = models.FloatField(null=True, blank=True,default=0)
-    cycle3 = models.FloatField(null=True, blank=True,default=0)
-    cycle4 = models.FloatField(null=True, blank=True,default=0)
-    cycle5 = models.FloatField(null=True, blank=True,default=0)
-    cycle6 = models.FloatField(null=True, blank=True,default=0)
-    cycle7 = models.FloatField(null=True, blank=True,default=0)
-    cycle8 = models.FloatField(null=True, blank=True,default=0)
-    cycle9 = models.FloatField(null=True, blank=True,default=0)
-    balance = models.FloatField(null=True, blank=True,default=0)
-    short_name = models.ForeignKey(Client, on_delete=models.CASCADE)
+    inv_amount = models.FloatField(null=True, blank=True)  
+    account_name = models.ForeignKey(Client, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     
+
+    @property
+    def cycle(self):
+        if self.due_date:
+            days_diff = (timezone.now().date() - self.due_date).days
+            if days_diff <= 15:
+                return 1
+            elif 16 <= days_diff <= 30:
+                return 2
+            elif 31 <= days_diff <= 45:
+                return 3
+            elif 46 <= days_diff <= 60:
+                return 4
+            elif 61 <= days_diff <= 75:
+                return 5
+            elif 76 <= days_diff <= 90:
+                return 6
+            elif 91 <= days_diff <= 105:
+                return 7
+            elif 106 <= days_diff <= 120:
+                return 8
+            else:
+                return 9
+        else:
+            return None
 
     def __str__(self):
         if self.bill_no:
             return self.bill_no
         else:
-            account_name = self.short_name.account_name if self.short_name else None
-            return account_name or f"Bill {self.pk}"  
+            account_name = self.short_name.account_name 
+            return account_name or f"Bill {self.pk}"
     
 class Action(models.Model):
     action_date = models.DateTimeField(default=datetime.datetime.combine(datetime.date.today(), datetime.time(9, 30)))
@@ -92,7 +106,7 @@ class Action(models.Model):
     )
     action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
     action_amount = models.FloatField()
-    short_name = models.ForeignKey(Client, on_delete=models.CASCADE)
+    account_name = models.ForeignKey(Client, on_delete=models.CASCADE)
     subtype = models.CharField(max_length=20, choices=SMS_CHOICES, null=True, blank=True)
     followup_date = models.DateField(blank=True, default=None, null=True)
     description = models.TextField(blank=True)
