@@ -19,6 +19,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta, date
 from django.contrib.auth import update_session_auth_hash
 from .forms import CustomPasswordChangeForm
+from decimal import Decimal
 # Create your views here.
 
 
@@ -66,7 +67,7 @@ def myAccount(request):
 def userdashboard(request):
     # Retrieve the logged-in user
     user = request.user
-    collector_count = Action.objects.filter(completed=False, short_name__collector=request.user).count() 
+    collector_count = Action.objects.filter(completed=False, account_name__collector=request.user).count() 
     
     # Filter clients for the currently logged-in user
     clients = Client.objects.filter(collector=user)
@@ -78,7 +79,7 @@ def userdashboard(request):
         total_cycles_by_client = {}
 
     # Filter bills for the clients associated with the logged-in user
-    bills = Bill.objects.filter(short_name__collector=request.user)
+    bills = Bill.objects.filter(account_name__collector=request.user)
     
     # Calculate the date 15 days ago
     fifteen_days_ago = timezone.now() - timedelta(days=15)
@@ -99,14 +100,35 @@ def userdashboard(request):
     else:
         mycollection = None
 
+    aging_data = {
+        'cycle1': Decimal(0),
+        'cycle2': Decimal(0),
+        'cycle3': Decimal(0),
+        'cycle4': Decimal(0),
+        'cycle5': Decimal(0),
+        'cycle6': Decimal(0),
+        'cycle7': Decimal(0),
+        'cycle8': Decimal(0),
+        'cycle9': Decimal(0),
+    }
+
+    for client in clients:
+        cyclebills = client.bill_set.all()
+        for bill in cyclebills:
+            cycle = bill.cycle
+            if cycle is not None:
+                aging_data[f'cycle{cycle}'] += Decimal(bill.inv_amount)
+    for key, value in aging_data.items():
+        aging_data[key] = round(value, 2)
+            
     # Calculate aging data
-    aging_data = {f'cycle{i}': bills.aggregate(Sum(f'cycle{i}'))[f'cycle{i}__sum'] or 0 for i in range(1, 10)}
+    # aging_data = {f'cycle{i}': bills.filter(cycle=i).aggregate(Sum('inv_amount'))['inv_amount__sum'] or 0 for i in range(1, 10)}
 
     # Calculate the total sum of all bills
     total_sum = sum(aging_data.values())
 
     # Calculate the grand total sum of all bills' balance
-    grand_total_balance = bills.aggregate(Sum('balance'))['balance__sum'] or 0
+    grand_total_balance = bills.aggregate(Sum('inv_amount'))['inv_amount__sum'] or 0
 
     # Check if there are clients associated with the logged-in user
     if clients.exists() and bills.exists():
@@ -170,7 +192,7 @@ def admindashboard(request):
         balance_difference=   'Rs 0'
                 
     # Calculate the grand total sum of all bills' balance
-    total_balance = bills.aggregate(Sum('balance'))['balance__sum'] or 0
+    total_balance = bills.aggregate(Sum('inv_amount'))['inv_amount__sum'] or 0
 
     # Round the total_overdue to 2 decimal places
     total_overdue = round(total_balance, 2)
@@ -182,7 +204,7 @@ def admindashboard(request):
     for client in clients:
         collector = client.collector
         if collector:
-            total_due = Bill.objects.filter(short_name=client).aggregate(Sum('balance'))['balance__sum'] or 0
+            total_due = Bill.objects.filter(account_name=client).aggregate(Sum('inv_amount'))['inv_amount__sum'] or 0
             rounded_total_due = round(total_due, 2)  # Round the total_due to 2 decimal places
             if collector.user_name in collector_data:
                 collector_data[collector.user_name] += rounded_total_due

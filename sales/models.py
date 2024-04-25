@@ -82,7 +82,7 @@ class Bill(models.Model):
         if self.bill_no:
             return self.bill_no
         else:
-            account_name = self.short_name.account_name 
+            account_name = self.account_name.account_name 
             return account_name or f"Bill {self.pk}"
     
 class Action(models.Model):

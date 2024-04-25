@@ -27,7 +27,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from account.utils import check_role_admin, check_role_user
 from sales.tasks import bill_upload
-
+from collections import defaultdict
 
 # Create your views here.
 @login_required(login_url='login')
@@ -70,11 +70,10 @@ def collection(request):
      # Filter clients for the currently logged-in user
     clients = Client.objects.filter(collector=request.user)
 
-    print(clients)
+    
     # Filter actions for the currently logged-in user
-    actions = Action.objects.filter(short_name__collector=request.user).order_by('-created')
-    
-    
+    actions = Action.objects.filter(account_name__collector=request.user).order_by('-created')
+     
     # Calculate the count of manual actions that are not completed
     manual_not_completed_count = Action.objects.filter(type='manual', completed=False).count()
     auto_count = Action.objects.filter(type='auto', completed=False).count()
@@ -89,8 +88,7 @@ def collection(request):
         
         if 'add_action' in request.POST:
             action_type = request.POST.get('action_type')
-            
-            short_name_id = request.POST.get('short_name')
+            account_name_id = request.POST.get('account_name')
             description=request.POST.get('description')
             subtype=request.POST.get('subtype')
             followup_date=request.POST.get('followup_date')
@@ -106,13 +104,13 @@ def collection(request):
             # Fetch the related objects
             try:
                 
-                short_name = Client.objects.get(pk=short_name_id)
+                account_name = Client.objects.get(pk=account_name_id)
             except (Bill.DoesNotExist, Client.DoesNotExist):
                 messages.error(request, 'Invalid bill number or short name.')
                 return redirect('collection')
 
             # Set the action_amount to the balance of the corresponding bill
-            action_amount = short_name.balance if hasattr(short_name, 'balance') else 0
+            action_amount = account_name.balance if hasattr(account_name, 'balance') else 0
 
             type = 'manual'  # Set the type to 'manual'
 
@@ -122,7 +120,7 @@ def collection(request):
                 type=type,
                 action_type=action_type,
                 action_amount=action_amount,
-                short_name=short_name,
+                account_name=account_name,
                 followup_date=followup_date,
                 description=description,
                 subtype=subtype,
@@ -193,22 +191,27 @@ def client(request):
 @login_required(login_url='login')
 def client_profile(request, client_id):
     client = get_object_or_404(Client, id=client_id)
-    actions = Action.objects.filter(short_name=client).order_by('-created')
-    bills = Bill.objects.filter(short_name=client)
+    actions = Action.objects.filter(account_name=client).order_by('-created')
+    bills = Bill.objects.filter(account_name=client)
     cyclebills = client.bill_set.all()
+    
 
-    # Calculate the sum of amounts for each aging bucket
     aging_data = {
-        'cycle1': cyclebills.aggregate(Sum('cycle1'))['cycle1__sum'] or Decimal(0),
-        'cycle2': cyclebills.aggregate(Sum('cycle2'))['cycle2__sum'] or Decimal(0),
-        'cycle3': cyclebills.aggregate(Sum('cycle3'))['cycle3__sum'] or Decimal(0),
-        'cycle4': cyclebills.aggregate(Sum('cycle4'))['cycle4__sum'] or Decimal(0),
-        'cycle5': cyclebills.aggregate(Sum('cycle5'))['cycle5__sum'] or Decimal(0),
-        'cycle6': cyclebills.aggregate(Sum('cycle6'))['cycle6__sum'] or Decimal(0),
-        'cycle7': cyclebills.aggregate(Sum('cycle7'))['cycle7__sum'] or Decimal(0),
-        'cycle8': cyclebills.aggregate(Sum('cycle8'))['cycle8__sum'] or Decimal(0),
-        'cycle9': cyclebills.aggregate(Sum('cycle9'))['cycle9__sum'] or Decimal(0),
+        'cycle1': Decimal(0),
+        'cycle2': Decimal(0),
+        'cycle3': Decimal(0),
+        'cycle4': Decimal(0),
+        'cycle5': Decimal(0),
+        'cycle6': Decimal(0),
+        'cycle7': Decimal(0),
+        'cycle8': Decimal(0),
+        'cycle9': Decimal(0),
     }
+    
+    for bill in cyclebills:
+        cycle = bill.cycle
+        if cycle is not None:
+            aging_data[f'cycle{cycle}'] += Decimal(bill.inv_amount)
 
     # Check if all actions for the client have completed=True
     all_actions_completed = all(action.completed for action in actions)
@@ -238,7 +241,7 @@ def client_profile(request, client_id):
             subtype = sms_form.cleaned_data['subtype']
             phone_number = sms_form.cleaned_data['phone_number']
 
-            # Perform additional actions with the SMS data
+
             # For example, log the SMS action in the database
             Action.objects.create(
                 action_date=timezone.now(),
@@ -322,7 +325,6 @@ def add_client(request):
 
     return render(request, 'add_client.html', {'form': form, 'client': None})
        
-
 def get_client_names(request):
     # Query all clients and their associated bill numbers
     client_data = (
@@ -362,7 +364,7 @@ def send_sms(phone_number, sms_content, simulate_success=False):
 
     url = "https://api.sparrowsms.com/v2/sms/"
     data = {
-        'token': 'v2_M1vtw2aeNOXETkVFSgoOXmOchwN.BqR',
+        'token': 'v2_M1vtw2aeNOXETkVFSgoOXmOchwN.BR',
         'from': 'Demo',
         'to': phone_number,
         'text': sms_content,
@@ -388,7 +390,7 @@ def check_and_trigger_sms(sender, instance, **kwargs):
     if instance.type == 'auto' and instance.action_type == 'SMS' and instance.action_date == today and not instance.completed: 
         try:
             # Fetch related client and bill
-            client = instance.short_name
+            client = instance.account_name
 
             # Get dynamic SMS content based on subtype
             sms_content = generate_sms_text(instance.subtype, client)
@@ -490,24 +492,26 @@ def action(request):
    
     return render(request, 'action.html' , context)
 
+
 def calculate_total_cycles_for_client(client):
-    return {
-        'cycle1': Bill.objects.filter(short_name=client).aggregate(Sum('cycle1'))['cycle1__sum'] or 0,
-        'cycle2': Bill.objects.filter(short_name=client).aggregate(Sum('cycle2'))['cycle2__sum'] or 0,
-        'cycle3': Bill.objects.filter(short_name=client).aggregate(Sum('cycle3'))['cycle3__sum'] or 0,
-        'cycle4': Bill.objects.filter(short_name=client).aggregate(Sum('cycle4'))['cycle4__sum'] or 0,
-        'cycle5': Bill.objects.filter(short_name=client).aggregate(Sum('cycle5'))['cycle5__sum'] or 0,
-        'cycle6': Bill.objects.filter(short_name=client).aggregate(Sum('cycle6'))['cycle6__sum'] or 0,
-        'cycle7': Bill.objects.filter(short_name=client).aggregate(Sum('cycle7'))['cycle7__sum'] or 0,
-        'cycle8': Bill.objects.filter(short_name=client).aggregate(Sum('cycle8'))['cycle8__sum'] or 0,
-        'cycle9': Bill.objects.filter(short_name=client).aggregate(Sum('cycle9'))['cycle9__sum'] or 0,
-    }
+    total_cycles = defaultdict(float)  # Initialize a dictionary to store total cycles for the client
+    
+    # Iterate through the client's bills
+    for bill in Bill.objects.filter(account_name=client):
+        cycle = bill.cycle  # Get the cycle for the bill
+        amount = bill.inv_amount  # Get the amount from the bill
+        
+        # Add the amount to the corresponding cycle
+        total_cycles[f'cycle{cycle}'] += amount
+    
+    return dict(total_cycles)
+
 
 @login_required(login_url='login')
 @user_passes_test(check_role_admin)
 def aging(request):
     clients = Client.objects.all()
-    # Calculate the sum of amounts for each aging bucket
+
     # Dictionary to store total cycles for each client
     total_cycles_by_client = {}
 
@@ -515,36 +519,46 @@ def aging(request):
         total_cycles_by_client[client.id] = calculate_total_cycles_for_client(client)
 
     aging_data = {
-        'cycle1': Bill.objects.aggregate(Sum('cycle1'))['cycle1__sum'] or 0,
-        'cycle2': Bill.objects.aggregate(Sum('cycle2'))['cycle2__sum'] or 0,
-        'cycle3': Bill.objects.aggregate(Sum('cycle3'))['cycle3__sum'] or 0,
-        'cycle4': Bill.objects.aggregate(Sum('cycle4'))['cycle4__sum'] or 0,
-        'cycle5': Bill.objects.aggregate(Sum('cycle5'))['cycle5__sum'] or 0,
-        'cycle6': Bill.objects.aggregate(Sum('cycle6'))['cycle6__sum'] or 0,
-        'cycle7': Bill.objects.aggregate(Sum('cycle7'))['cycle7__sum'] or 0,
-        'cycle8': Bill.objects.aggregate(Sum('cycle8'))['cycle8__sum'] or 0,
-        'cycle9': Bill.objects.aggregate(Sum('cycle9'))['cycle9__sum'] or 0,
+        'cycle1': Decimal(0),
+        'cycle2': Decimal(0),
+        'cycle3': Decimal(0),
+        'cycle4': Decimal(0),
+        'cycle5': Decimal(0),
+        'cycle6': Decimal(0),
+        'cycle7': Decimal(0),
+        'cycle8': Decimal(0),
+        'cycle9': Decimal(0),
     }
-    rounded_aging_data = {key: round(value, 2) for key, value in aging_data.items()}
+
+    for client in clients:
+        cyclebills = client.bill_set.all()
+        for bill in cyclebills:
+            cycle = bill.cycle
+            if cycle is not None:
+                aging_data[f'cycle{cycle}'] += Decimal(bill.inv_amount)
+    for key, value in aging_data.items():
+        aging_data[key] = round(value, 2)
+
     # Calculate the total sum of all bills
     total_sum = sum(aging_data.values())
+
     # Calculate the grand total sum of all bills' balance
-    grand_total_balance = Bill.objects.aggregate(Sum('balance'))['balance__sum'] or 0
-    
+    grand_total_balance = Bill.objects.aggregate(Sum('inv_amount'))['inv_amount__sum'] or 0
+
     # Calculate percentages based on grand total balance
     percentages = calculate_percentages(aging_data, grand_total_balance)
 
     context = {
         'aging_data': aging_data,
-        'rounded_aging_data': rounded_aging_data,
         'total_sum': total_sum,
         'grand_total_balance': grand_total_balance,
         'percentages': percentages,
-        'clients':clients,
+        'clients': clients,
         'total_cycles_by_client': total_cycles_by_client,
     }
 
     return render(request, 'aging.html', context)
+
 
 @login_required(login_url='login')
 def delete_action(request , action_id):
@@ -554,18 +568,32 @@ def delete_action(request , action_id):
     return redirect('action')
 
 def calculate_percentages(aging_data, total_amount):
-    percentage_0_30_days = round((float(aging_data['cycle1']) / float(total_amount)) * 100)
-    percentage_31_60_days = round((float(aging_data['cycle2']) / float(total_amount)) * 100)
-    percentage_61_90_days = round((float(aging_data['cycle3']) / float(total_amount)) * 100)
-    percentage_90_days_plus = round((float(aging_data['cycle4']) + float(aging_data['cycle5']) + float(aging_data['cycle6']) + float(aging_data['cycle7']) + float(aging_data['cycle8']) + float(aging_data['cycle9'])) / float(total_amount) * 100)
-    
+    if total_amount == 0:
+        return {
+            'percentage_0_30_days': 0,
+            'percentage_31_60_days': 0,
+            'percentage_61_90_days': 0,
+            'percentage_90_days_plus': 0,
+        }
+
+    percentage_0_30_days = (float(aging_data['cycle1']) + float(aging_data['cycle2'])) / float(total_amount) * 100
+    percentage_31_60_days = (float(aging_data['cycle3']) + float(aging_data['cycle4'])) / float(total_amount) * 100
+    percentage_61_90_days = (float(aging_data['cycle5']) + float(aging_data['cycle6'])) / float(total_amount) * 100
+    percentage_90_days_plus = (float(aging_data['cycle7']) + float(aging_data['cycle8']) + float(aging_data['cycle9'])) / float(total_amount) * 100
+
+    # Adjust the final percentage to ensure it sums up to 100%
+    total_percentage = percentage_0_30_days + percentage_31_60_days + percentage_61_90_days + percentage_90_days_plus
+    adjustment = 100 - total_percentage
+    percentage_90_days_plus += adjustment
+
     return {
-        'percentage_0_30_days': percentage_0_30_days,
-        'percentage_31_60_days': percentage_31_60_days,
-        'percentage_61_90_days': percentage_61_90_days,
-        'percentage_90_days_plus': percentage_90_days_plus,
+        'percentage_0_30_days': '{:.2f}'.format(percentage_0_30_days),
+        'percentage_31_60_days': '{:.2f}'.format(percentage_31_60_days),
+        'percentage_61_90_days': '{:.2f}'.format(percentage_61_90_days),
+        'percentage_90_days_plus': '{:.2f}'.format(percentage_90_days_plus),
     }
- 
+
+
 @login_required(login_url='login')
 def extend_action_dates(request, client_id):
     client = Client.objects.get(pk=client_id)
@@ -721,7 +749,7 @@ def process_uploaded_file(request):
 
 
 def log_page(request):
-    log_entries = LogEntry.objects.order_by('-timestamp')  # Sort log entries by timestamp in descending order
+    log_entries = LogEntry.objects.order_by('-timestamp')  
     return render(request, 'log_page.html', {'log_entries': log_entries})
 
 

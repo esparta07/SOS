@@ -108,7 +108,7 @@
                                         <i class="mdi mdi-close-circle-outline mdi-24px" style="color: red;"></i>
                                     </td>
                                     {% endif %}
-                                      <td><a href="{% url 'client_profile' client_id=action.short_name.id %}">{{ action.short_name }}</a></td>
+                                      <td><a href="{% url 'client_profile' client_id=action.account_name.id %}">{{ action.account_name }}</a></td>
                                       <td>{{ action.action_date }}</td>
                                       {% if action.action_type == 'SMS' %}
                                       <td>
@@ -127,7 +127,7 @@
                                       </td>
                                       {% endif %}
                                       <td>Rs {{ action.action_amount }}</td>
-                                      <td>{{ action.short_name.collector }}</td>
+                                      <td>{{ action.account_name.collector }}</td>
                                       
                                       
                                   </tr>
@@ -241,7 +241,7 @@
                                         <i class="mdi mdi-close-circle-outline mdi-24px" style="color: red;"></i>
                                     </td>
                                     {% endif %}
-                                      <td><a href="{% url 'client_profile' client_id=action.short_name.id %}">{{ action.short_name }}</a></td>
+                                      <td><a href="{% url 'client_profile' client_id=action.account_name.id %}">{{ action.account_name }}</a></td>
                                       <td>{{ action.action_date }}</td>
                                       {% if action.action_type == 'SMS' %}
                                       <td class="text-center">
@@ -261,7 +261,7 @@
                                       {% endif %}
                                       <td class="text-center">{{action.type}}</td>
                                       <td>Rs {{ action.action_amount }}</td>
-                                      <td>{{ action.short_name.collector }}</td>
+                                      <td>{{ action.account_name.collector }}</td>
                                       
                                       
                                     </tr>

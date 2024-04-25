@@ -15,7 +15,11 @@ from IPython.display import FileLink
 from django.utils import timezone
 import pandas as pd
 from django.contrib import messages
-
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from datetime import timedelta
+from django.utils import timezone
+from .models import LogEntry
 
 def convert_date_format(input_date):
     try:
@@ -46,29 +50,43 @@ def convert_nepali_to_ad(nepali_date):
         return None  # or return the original value if conversion fails
     
 def overdue120d(client):
-    # Get the sum of all cycles for the client's bills
-    total_cycles_sum = Bill.objects.filter(short_name=client).aggregate(
-        total_cycles_sum=Sum('cycle9'))['total_cycles_sum'] or Decimal('0.00')
+    try:
+        # Get the bills for the client
+        client_bills = Bill.objects.filter(account_name=client)
 
-    # Round the total_cycles_sum to two decimal places
-    total_cycles_sum = round(total_cycles_sum, 2)
+        # Initialize total_cycles_sum
+        total_cycles_sum = Decimal('0.00')
 
-    # Update the overdue120 field in the Client model
-    client.overdue120 = total_cycles_sum
-    client.save()
-    
+        # Iterate over the bills and calculate the total amount for cycles 7, 8, and 9
+        for bill in client_bills:
+            if bill.cycle in [7, 8, 9]:
+                total_cycles_sum += Decimal(bill.inv_amount)
+
+        # Round the total_cycles_sum to two decimal places
+        total_cycles_sum = round(total_cycles_sum, 2)
+
+        # Update the overdue120 field in the Client model
+        client.overdue120 = total_cycles_sum
+        client.save()
+    except Exception as e:
+        print(f"Error in calculating overdue120 for client {client}: {e}")
+
+
 def update_client_balance(client):
     # Get the sum of the 'balance' field for the client's bills
-    total_balance_sum = Bill.objects.filter(short_name=client).aggregate(
-        total_balance_sum=Sum('balance')
-    )['total_balance_sum'] or Decimal('0.00')
+    total_balance_sum = Bill.objects.filter(account_name=client).aggregate(
+        total_balance_sum=Sum('inv_amount')
+    )['total_balance_sum']
 
-    # Round the total_balance_sum to two decimal places
-    total_balance_sum = round(total_balance_sum, 2)
+    # If total_balance_sum is None (meaning no bills), set it to 0
+    if total_balance_sum is None:
+        total_balance_sum = Decimal('0.00')
+    else:
+        # Round the total_balance_sum to two decimal places
+        total_balance_sum = round(total_balance_sum, 2)
 
     # Update the balance field in the Client model
     client.balance = total_balance_sum
-    
     client.save()
     
 def create_actions_for_bill(bill):
@@ -88,7 +106,7 @@ def create_actions_for_bill(bill):
     # Add a check to delete existing incomplete actions for the client
     Action.objects.filter(account_name=bill.account_name, completed=False).delete()
     
-    if not bill.short_name.pause:  
+    if not bill.account_name.pause:  
     
         grant_period_days = int(bill.account_name.grant_period)
         target_date = bill.due_date + timedelta(days=grant_period_days)
@@ -98,8 +116,8 @@ def create_actions_for_bill(bill):
             action_date=target_date,
             type='auto',
             action_type='SMS',
-            action_amount=bill.short_name.balance,
-            short_name=bill.short_name,
+            action_amount=bill.account_name.balance,
+            account_name=bill.account_name,
             completed=False,
             subtype='Reminder'
         )
@@ -110,8 +128,8 @@ def create_actions_for_bill(bill):
             action_date=target_date + timedelta(days=1),
             type='auto',
             action_type='SMS',
-            action_amount=bill.short_name.balance,
-            short_name=bill.short_name,
+            action_amount=bill.account_name.balance,
+            account_name=bill.account_name,
             completed=False,
             subtype='Gentle'
         )
@@ -122,21 +140,21 @@ def create_actions_for_bill(bill):
             action_date=target_date + timedelta(days=3),
             type='auto',
             action_type='SMS',
-            action_amount=bill.short_name.balance,
-            short_name=bill.short_name,
+            action_amount=bill.account_name.balance,
+            account_name=bill.account_name,
             completed=False,
             subtype='Strong'
         )
         print(f"Action 3 Created: {action3}")
 
         # Create Action 4 (if group is 'Normal')
-        if bill.short_name.group == 'Normal':
+        if bill.account_name.group == 'Normal':
             action4 = Action.objects.create(
                 action_date=target_date + timedelta(days=7),
                 type='auto',
                 action_type='SMS',
-                action_amount=bill.short_name.balance,
-                short_name=bill.short_name,
+                action_amount=bill.account_name.balance,
+                account_name=bill.account_name,
                 completed=False,
                 subtype='Final'
             )
@@ -147,7 +165,7 @@ def delete_actions():
     actions_to_delete = Action.objects.filter(
         completed=False,
         type='auto',
-        short_name__balance__lte=300
+        account_name__balance__lte=300
     )
     # Delete the selected actions
     actions_to_delete.delete()
@@ -283,6 +301,7 @@ def bill_process(file_contents):
         # Fetch all clients at once
         account_names = df['client'].astype(str).str.strip().unique()
         clients = Client.objects.filter(account_name__in=account_names)
+        print(clients)
 
         success_count = 0
         
@@ -319,11 +338,12 @@ def bill_process(file_contents):
                         # Add success message
                         success_messages.append(f"Bill {existing_bill.bill_no} updated successfully.")
                         # Call the functions to update the client's balance and overdue120
-                        # update_client_balance(existing_bill.short_name)
-                        # overdue120d(existing_bill.short_name)
+                       
                     else:
                                                     
                         continue
+                    
+                    
                
                 # Create a new Bill instance
                 new_bill=Bill.objects.create(
@@ -336,9 +356,7 @@ def bill_process(file_contents):
                 
                 
                 # Call the function to update the client's balance after each Bill creation
-                # update_client_balance(client)
-                # overdue120d(client)
-                # create_actions_for_bill(new_bill)
+                create_actions_for_bill(new_bill)
                             
             except Client.DoesNotExist:
                 error_messages.append(f'Client "{account_name_value}" not found\n')
@@ -347,7 +365,9 @@ def bill_process(file_contents):
             except Exception as e:
                 error_messages.append(f'Error processing row {index + 2}: {e}') 
         
-            
+        for client in clients:
+            update_client_balance(client)
+            overdue120d(client)   
                     
         if success_count > 0:
             success_messages.append(f"{success_count} records successfully uploaded.")
@@ -356,10 +376,12 @@ def bill_process(file_contents):
             download_link = None   
             success_messages.append("No new bills were added")
 
-        # calculate_total_balance_for_all_collectors()
-        # update_collector_balances()
-        # company_balance()
-        # delete_actions()  
+        
+            
+        calculate_total_balance_for_all_collectors()
+        update_collector_balances()
+        company_balance()
+        delete_actions()  
         
         today_date = datetime.today()
         formatted_today_date = today_date.strftime('%Y-%m-%d %H:%M:%S')  
@@ -382,3 +404,12 @@ def bill_process(file_contents):
         LogEntry.objects.create(message=success, is_error=False)
         
     return success_messages, error_messages
+
+
+@receiver(post_save, sender=LogEntry)
+def delete_old_logs(sender, instance, **kwargs):
+    # Define the threshold date (15 days ago)
+    threshold_date = timezone.now() - timedelta(days=15)
+    
+    # Delete logs older than the threshold date
+    LogEntry.objects.filter(timestamp__lt=threshold_date).delete()
