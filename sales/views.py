@@ -28,8 +28,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from account.utils import check_role_admin, check_role_user
 
-from sales.tasks import bill_upload, send_update_email
-from .context_processors import notifications_context
+from sales.tasks import bill_upload
 
 from sales.tasks import bill_upload
 from collections import defaultdict
