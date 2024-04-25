@@ -1,5 +1,6 @@
-from .models import Action, Client
-from datetime import date, timedelta
+from  .models import Action, Client, CreditEntry
+from datetime import date, timedelta, datetime
+from django.utils import timezone
 
 
 def action_counts(request):
@@ -20,7 +21,7 @@ def check_upcoming_actions(request, days_in_future=2):
     user = request.user
 
     # Check if the user is authenticated
-    if user.is_authenticated:
+    if user.is_authenticated: 
         today = date.today()
         future_date = today + timedelta(days=days_in_future)
 
@@ -56,3 +57,31 @@ def check_upcoming_actions(request, days_in_future=2):
             'follow_up_today': 0,
         }
 
+def notifications_context(request):
+    if request.user.is_authenticated:
+        # Get the date parameter from the request's query string
+        from_date_param = request.GET.get('from')
+        to_date_param = request.GET.get('to')
+
+        if from_date_param and to_date_param:
+            # Convert the date strings to datetime objects
+            from_date = datetime.strptime(from_date_param, '%Y-%m-%d').date()
+            to_date = datetime.strptime(to_date_param, '%Y-%m-%d').date()
+            # Fetch CreditEntry objects within the specified date range for the current user, excluding settled entries
+            data = CreditEntry.objects.filter(date__range=[from_date, to_date], collector=request.user, settle=False).order_by('-id')
+        else:
+            # Fetch all unsettled CreditEntry objects for the current user
+            data = CreditEntry.objects.filter(collector=request.user, settle=False).order_by('-id')
+
+        # Assign message for each entry
+        for entry in data:
+            entry.message = f"You have credited {entry.amount} for {entry.account_name}"
+            entry.date = entry.date.strftime("%d %b, %Y")
+
+        # Return data
+        return {
+            "entries": data
+        }
+    else:
+        # Return an empty dictionary if the user is not authenticated
+        return {}

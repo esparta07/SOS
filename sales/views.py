@@ -1,18 +1,20 @@
-from django.forms import ValidationError
+
 from datetime import datetime, timedelta, date
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from .models import Action
+from .models import Action, CreditEntry
 from .filters import ActionFilter
+
+from .models import Client, Bill, Action
+
 from .models import Client, Bill, Action,LogEntry
+
 from django.contrib import messages
-from .forms import ExcelUploadForm, ClientForm, ActionUpdateForm, ActionCreationForm, ExtendActionForm,SendSMSForm,ClientUploadForm
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from .forms import ExcelUploadForm, ClientForm, ActionUpdateForm, ActionCreationForm, ExtendActionForm,SendSMSForm,ClientUploadForm,CreditEntryForm
+from django.core.exceptions import  ObjectDoesNotExist
 from django.http import HttpResponse, JsonResponse
 from django.core.files.storage import default_storage
-from django.db.models import Sum, F, Max, Q
+from django.db.models import Sum, F
 from decimal import Decimal
-from IPython.display import FileLink
 from django.utils import timezone
 import pandas as pd
 import requests
@@ -21,13 +23,17 @@ from django.dispatch import receiver
 from django.core.serializers.json import DjangoJSONEncoder
 from django.template import Context, Template
 import json
-from django.urls import reverse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from account.utils import check_role_admin, check_role_user
+
+from sales.tasks import bill_upload, send_update_email
+from .context_processors import notifications_context
+
 from sales.tasks import bill_upload
 from collections import defaultdict
+
 
 # Create your views here.
 @login_required(login_url='login')
@@ -747,10 +753,44 @@ def process_uploaded_file(request):
 
     return redirect('client')
 
+def credit_entry(request):
+    if request.method == 'POST':
+        form = CreditEntryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Credit Entry added successfully")
+            # Clear the form by instantiating a new form object
+            return redirect('credit_entry')  # Redirect to the same page to display success message and clear form
+    else:
+        # If the request method is not POST, create a new instance of the form
+        form = CreditEntryForm()
+
+
+    # If form validation fails, display form errors
+    for field, errors in form.errors.items():
+        for error in errors:
+            messages.error(request, f"Error adding credit entry: {error}")
+
+    # Render the HTML template with the form instance in the context
+    return render(request, 'credit_track.html', {'form': form})
+
+@login_required
+def notification(request):
+    # Filter out unsettled entries for the current user (collector)
+    unsettled_entries = CreditEntry.objects.filter(collector=request.user, settle=False)
+    return render(request, 'notification.html', {'entries': unsettled_entries})
+
+def settle_notification(request, entry_id):
+    if request.method == 'POST':
+        entry = CreditEntry.objects.get(pk=entry_id)
+        entry.settle = True
+        entry.save()  # Save the entry with settle=True instead of deleting it
+    return redirect('notification')
 
 def log_page(request):
     log_entries = LogEntry.objects.order_by('-timestamp')  
     return render(request, 'log_page.html', {'log_entries': log_entries})
+
 
 
 

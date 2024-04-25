@@ -72,7 +72,10 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'sales.context_processors.action_counts',
                 'sales.context_processors.check_upcoming_actions',
+
+                'sales.context_processors.notifications_context',
                 
+
             ],
         },
     },
