@@ -1,12 +1,25 @@
 from datetime import datetime, timedelta, date
 from nepali_date_converter import english_to_nepali_converter, nepali_to_english_converter
-from .models import Bill, Client,Action,CompanyBalance,UserBalance,DailyBalance
+from .models import Bill, Client,Action,CompanyBalance,UserBalance,DailyBalance,LogEntry
 from django.db.models import Sum, F, Max, Q
 from decimal import Decimal
 from django.utils import timezone
 from django.core.mail import EmailMessage
 from django.conf import settings
 from account.models import User
+from django.urls import reverse
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from decimal import Decimal
+from IPython.display import FileLink
+from django.utils import timezone
+import pandas as pd
+from django.contrib import messages
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from datetime import timedelta
+from django.utils import timezone
+from .models import LogEntry
 
 def convert_date_format(input_date):
     try:
@@ -37,29 +50,43 @@ def convert_nepali_to_ad(nepali_date):
         return None  # or return the original value if conversion fails
     
 def overdue120d(client):
-    # Get the sum of all cycles for the client's bills
-    total_cycles_sum = Bill.objects.filter(short_name=client).aggregate(
-        total_cycles_sum=Sum('cycle9'))['total_cycles_sum'] or Decimal('0.00')
+    try:
+        # Get the bills for the client
+        client_bills = Bill.objects.filter(account_name=client)
 
-    # Round the total_cycles_sum to two decimal places
-    total_cycles_sum = round(total_cycles_sum, 2)
+        # Initialize total_cycles_sum
+        total_cycles_sum = Decimal('0.00')
 
-    # Update the overdue120 field in the Client model
-    client.overdue120 = total_cycles_sum
-    client.save()
-    
+        # Iterate over the bills and calculate the total amount for cycles 7, 8, and 9
+        for bill in client_bills:
+            if bill.cycle in [7, 8, 9]:
+                total_cycles_sum += Decimal(bill.inv_amount)
+
+        # Round the total_cycles_sum to two decimal places
+        total_cycles_sum = round(total_cycles_sum, 2)
+
+        # Update the overdue120 field in the Client model
+        client.overdue120 = total_cycles_sum
+        client.save()
+    except Exception as e:
+        print(f"Error in calculating overdue120 for client {client}: {e}")
+
+
 def update_client_balance(client):
     # Get the sum of the 'balance' field for the client's bills
-    total_balance_sum = Bill.objects.filter(short_name=client).aggregate(
-        total_balance_sum=Sum('balance')
-    )['total_balance_sum'] or Decimal('0.00')
+    total_balance_sum = Bill.objects.filter(account_name=client).aggregate(
+        total_balance_sum=Sum('inv_amount')
+    )['total_balance_sum']
 
-    # Round the total_balance_sum to two decimal places
-    total_balance_sum = round(total_balance_sum, 2)
+    # If total_balance_sum is None (meaning no bills), set it to 0
+    if total_balance_sum is None:
+        total_balance_sum = Decimal('0.00')
+    else:
+        # Round the total_balance_sum to two decimal places
+        total_balance_sum = round(total_balance_sum, 2)
 
     # Update the balance field in the Client model
     client.balance = total_balance_sum
-    
     client.save()
     
 def create_actions_for_bill(bill):
@@ -77,11 +104,11 @@ def create_actions_for_bill(bill):
             return
 
     # Add a check to delete existing incomplete actions for the client
-    Action.objects.filter(short_name=bill.short_name, completed=False).delete()
+    Action.objects.filter(account_name=bill.account_name, completed=False).delete()
     
-    if not bill.short_name.pause:  # Corrected this line
+    if not bill.account_name.pause:  
     
-        grant_period_days = int(bill.short_name.grant_period)
+        grant_period_days = int(bill.account_name.grant_period)
         target_date = bill.due_date + timedelta(days=grant_period_days)
 
         # Create Action 1
@@ -89,8 +116,8 @@ def create_actions_for_bill(bill):
             action_date=target_date,
             type='auto',
             action_type='SMS',
-            action_amount=bill.short_name.balance,
-            short_name=bill.short_name,
+            action_amount=bill.account_name.balance,
+            account_name=bill.account_name,
             completed=False,
             subtype='Reminder'
         )
@@ -101,8 +128,8 @@ def create_actions_for_bill(bill):
             action_date=target_date + timedelta(days=1),
             type='auto',
             action_type='SMS',
-            action_amount=bill.short_name.balance,
-            short_name=bill.short_name,
+            action_amount=bill.account_name.balance,
+            account_name=bill.account_name,
             completed=False,
             subtype='Gentle'
         )
@@ -113,21 +140,21 @@ def create_actions_for_bill(bill):
             action_date=target_date + timedelta(days=3),
             type='auto',
             action_type='SMS',
-            action_amount=bill.short_name.balance,
-            short_name=bill.short_name,
+            action_amount=bill.account_name.balance,
+            account_name=bill.account_name,
             completed=False,
             subtype='Strong'
         )
         print(f"Action 3 Created: {action3}")
 
         # Create Action 4 (if group is 'Normal')
-        if bill.short_name.group == 'Normal':
+        if bill.account_name.group == 'Normal':
             action4 = Action.objects.create(
                 action_date=target_date + timedelta(days=7),
                 type='auto',
                 action_type='SMS',
-                action_amount=bill.short_name.balance,
-                short_name=bill.short_name,
+                action_amount=bill.account_name.balance,
+                account_name=bill.account_name,
                 completed=False,
                 subtype='Final'
             )
@@ -138,7 +165,7 @@ def delete_actions():
     actions_to_delete = Action.objects.filter(
         completed=False,
         type='auto',
-        short_name__balance__lte=300
+        account_name__balance__lte=300
     )
     # Delete the selected actions
     actions_to_delete.delete()
@@ -246,3 +273,143 @@ def send_update_email(subject, message):
     mail.content_subtype = "plain"
     
     mail.send()
+      
+def bill_process(file_contents):
+    success_messages = []
+    error_messages = []
+
+    try:
+        # Read the uploaded Excel file
+        df = pd.read_excel(file_contents)
+
+        # Remove the first 5 rows
+        df = df.iloc[6:]
+        # Drop the first and fifth columns
+        df = df.drop(df.columns[[0,1,5,7]], axis=1)
+
+        # Rename the columns
+        df = df.rename(columns={'Unnamed: 2': 'bill_no', 'Unnamed: 3': 'client', 'Unnamed: 4': 'inv_amount','Unnamed: 6': 'due_date', })
+
+        # Check if the expected columns are present
+        expected_columns = ['bill_no', 'client', 'inv_amount', 'due_date',]
+        if not all(col in df.columns for col in expected_columns):
+            error_message = 'Wrong format file. Please make sure all required columns are present.'
+            error_messages.append(error_message)
+            return error_messages
+
+
+        # Fetch all clients at once
+        account_names = df['client'].astype(str).str.strip().unique()
+        clients = Client.objects.filter(account_name__in=account_names)
+        print(clients)
+
+        success_count = 0
+        
+        
+        # Identify and delete bills not present in the Excel file
+        existing_bills = Bill.objects.filter(
+            account_name__in=clients.values('id')
+        )
+        bills_to_delete = existing_bills.exclude(bill_no__in=df['bill_no'].unique())
+
+        if bills_to_delete.exists():
+            bills_to_delete.delete() 
+                
+        for index, row in df.iterrows():
+            try:
+                account_name_value = row['client']
+                client = clients.get(account_name=account_name_value)
+                
+                # Check if a Bill with the same data already exists
+                existing_bill = Bill.objects.filter(
+                    bill_no=row['bill_no'],
+                    due_date=row['due_date'],
+                    account_name=client,
+                ).first()
+                
+
+                
+                if existing_bill:
+                    if existing_bill.inv_amount != row['inv_amount']:
+                        # Update existing Bill with new inv_amount
+                        existing_bill.inv_amount = row['inv_amount']
+                        # Save the changes
+                        existing_bill.save()
+                        # Add success message
+                        success_messages.append(f"Bill {existing_bill.bill_no} updated successfully.")
+                        # Call the functions to update the client's balance and overdue120
+                       
+                    else:
+                                                    
+                        continue
+                    
+                    
+               
+                # Create a new Bill instance
+                new_bill=Bill.objects.create(
+                    bill_no=row['bill_no'],
+                    due_date=row['due_date'],
+                    inv_amount=row['inv_amount'],
+                    account_name=client
+                )
+                success_count += 1
+                
+                
+                # Call the function to update the client's balance after each Bill creation
+                create_actions_for_bill(new_bill)
+                            
+            except Client.DoesNotExist:
+                error_messages.append(f'Client "{account_name_value}" not found\n')
+            except ValidationError as e:
+                error_messages.append(f'Validation error at row {index + 2}: {e}\n')
+            except Exception as e:
+                error_messages.append(f'Error processing row {index + 2}: {e}') 
+        
+        for client in clients:
+            update_client_balance(client)
+            overdue120d(client)   
+                    
+        if success_count > 0:
+            success_messages.append(f"{success_count} records successfully uploaded.")
+            download_link = reverse('download_excel')
+        else:
+            download_link = None   
+            success_messages.append("No new bills were added")
+
+        
+            
+        calculate_total_balance_for_all_collectors()
+        update_collector_balances()
+        company_balance()
+        delete_actions()  
+        
+        today_date = datetime.today()
+        formatted_today_date = today_date.strftime('%Y-%m-%d %H:%M:%S')  
+
+        update_subject = 'Excel File Update Notification'
+        update_message = f'The Excel file has been successfully uploaded on {formatted_today_date}'
+
+        # send_update_email(update_subject, update_message) 
+        
+        
+        
+        
+    except Exception as e:
+        error_messages.append(f'Error processing Excel file: {e}')
+        
+    for error in error_messages:
+        LogEntry.objects.create(message=error, is_error=True)
+    
+    for success in success_messages:
+        LogEntry.objects.create(message=success, is_error=False)
+        
+    return success_messages, error_messages
+
+
+@receiver(post_save, sender=LogEntry)
+def delete_old_logs(sender, instance, **kwargs):
+    # Define the threshold date (15 days ago)
+    threshold_date = timezone.now() - timedelta(days=15)
+    
+    # Delete logs older than the threshold date
+    LogEntry.objects.filter(timestamp__lt=threshold_date).delete()

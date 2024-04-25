@@ -71,7 +71,7 @@
                                       <td class="text-center" style="width: 10px;">
                                           <input type="checkbox" name="completed_actions" value="{{ action.id }}">
                                       </td>
-                                      <td><a href="{% url 'client_profile' client_id=action.short_name.id %}">{{ action.short_name }}</a></td>
+                                      <td><a href="{% url 'client_profile' client_id=action.account_name.id %}">{{ action.account_name }}</a></td>
                                       <td>{{ action.action_date }}</td>
                                       {% if action.action_type == 'SMS' %}
                                       <td>
@@ -142,7 +142,7 @@
                                       <input type="checkbox" name="completed_actions" value="{{ action.id }}">
                                     </td>
                                     {% endif %}
-                                    <td><a href="{% url 'client_profile' client_id=action.short_name.id %}">{{ action.short_name }}</a></td>
+                                    <td><a href="{% url 'client_profile' client_id=action.account_name.id %}">{{ action.account_name }}</a></td>
                                       <td>{{ action.action_date }}</td>
                                       {% if action.action_type == 'SMS' %}
                                       <td>
@@ -203,7 +203,7 @@
                                     {% for action in actions %}
                                     {% if action.completed %}
                                     <tr style="background:#dff0d8">
-                                      <td><a href="{% url 'client_profile' client_id=action.short_name.id %}">{{ action.short_name }}</a></td>
+                                      <td><a href="{% url 'client_profile' client_id=action.account_name.id %}">{{ action.account_name }}</a></td>
                                       <td>{{ action.action_date }}</td>
                                       {% if action.action_type == 'SMS' %}
                                       <td class="text-center">
@@ -293,8 +293,8 @@
                   </div>
               </div>
                 <br>
-                <label for="{{ add_form.short_name.id_for_label }}">Client:</label>
-                {{ add_form.short_name }}
+                <label for="{{ add_form.account_name.id_for_label }}">Client:</label>
+                {{ add_form.account_name }}
                 <br>
 
                 <div class="form-group">

@@ -1,4 +1,5 @@
 from celery import shared_task
+
 from django.contrib import messages
 from django.forms import ValidationError
 from requests import request
@@ -16,9 +17,15 @@ from .utils import (
 from .models import Bill, Client
 from datetime import datetime
 
+
+
+from sales.utils import bill_process
+
+
 @shared_task
 def bill_upload(file_contents):
     try:
+
         # Assuming file_contents is the Excel file content
         excel_data = pd.read_excel(file_contents, skiprows=5)
         
@@ -265,3 +272,10 @@ def bill_upload(file_contents):
         
     except Exception as e:
         print(f"Error processing uploaded Excel file: {e}")
+
+        # Call the bill_process view function and pass the file contents
+        bill_process(file_contents)
+        
+    except Exception as e:
+        print("Error:", e)
+

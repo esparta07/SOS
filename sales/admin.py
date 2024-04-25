@@ -1,5 +1,9 @@
 from django.contrib import admin
+
 from .models import Client, Bill,Action,DailyBalance,UserBalance,CompanyBalance,CreditEntry
+
+from .models import Client, Bill,Action,DailyBalance,UserBalance,CompanyBalance,LogEntry
+
 from import_export.admin import ImportExportActionModelAdmin
 
 @admin.register(Client)
@@ -10,13 +14,13 @@ class ClientData(ImportExportActionModelAdmin):
 
 @admin.register(Bill)
 class BillData(ImportExportActionModelAdmin):
-    list_display = ['short_name', 'type', 'bill_no', 'inv_amount', 'due_date','balance',]
-    search_fields = ['short_name__account_name', 'bill_no'] 
+    list_display = ['account_name','bill_no', 'inv_amount', 'due_date',]
+    search_fields = ['account_name__account_name', 'bill_no'] 
    
 
 @admin.register(Action)
 class ActionData(ImportExportActionModelAdmin):
-    list_display = ['action_date','short_name', 'action_type','type','completed','subtype','followup_date']
+    list_display = ['action_date','account_name', 'action_type','type','completed','subtype','followup_date']
     search_fields = ['type']
     list_editable = ['completed','type','action_type']  
     
@@ -31,8 +35,13 @@ class UserBalanceData(ImportExportActionModelAdmin):
 @admin.register(CompanyBalance)
 class CompanyBalanceData(ImportExportActionModelAdmin):
     list_display = ['total_balance', 'date',]
+
 @admin.register(CreditEntry)
 class CreditEntryAdmin(ImportExportActionModelAdmin):
     list_display=['account_name','amount','collector','date','settle']
-    list_editable=['settle',]
-
+    list_editable=['settle',]    
+@admin.register(LogEntry)
+class LogEntryAdmin(admin.ModelAdmin):
+    list_display = ['message', 'is_error', 'timestamp']  
+    search_fields = ['message']  
+    list_filter = ['is_error'] 

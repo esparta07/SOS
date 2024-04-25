@@ -17,7 +17,6 @@ class ClientForm(forms.ModelForm):
         fields = '__all__'
         exclude = ['grant_period']
         widgets = {
-            'short_name': forms.TextInput(attrs={'class': 'form-control'}),
             'account_name': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'pan_number': forms.TextInput(attrs={'class': 'form-control'}),
@@ -51,7 +50,7 @@ class ActionCreationForm(forms.ModelForm):
     action_date = forms.DateField(initial=timezone.now, widget=forms.DateInput(attrs={'readonly': 'readonly'}))
     
     # Use a callable for the queryset to dynamically filter based on the user
-    short_name = forms.ModelChoiceField(
+    account_name = forms.ModelChoiceField(
         queryset=Client.objects.none(),
         widget=forms.Select(attrs={'class': 'form-control select2'}),
     )
@@ -70,7 +69,7 @@ class ActionCreationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Dynamically set the queryset for the short_name field based on the user
-        self.fields['short_name'].queryset = Client.objects.filter(collector=user)
+        self.fields['account_name'].queryset = Client.objects.filter(collector=user)
         
         # Add form control to other fields if needed
         for field_name, field in self.fields.items():

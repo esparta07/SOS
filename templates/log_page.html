@@ -1,0 +1,56 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Entries</title>
+    <!-- Bootstrap CSS CDN -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- DataTables CSS CDN -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
+</head>
+<body>
+    <div class="container">
+        <a class="float-right" href="{% if user.is_authenticated %}{% if user.role == user.ADMIN %}{% url 'account:admindashboard' %}{% else %}{% url 'account:userdashboard' %}{% endif %}{% else %}#{% endif %}" class="logo">
+            <i class="mdi mdi-house"></i>Home
+        </a>
+        
+        <h1>File Upload Logs</h1>
+        <table id="logTable" class="table table-bordered table-striped">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Message</th>
+                    <th>Type</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log_entry in log_entries %}
+                <tr class="{% if log_entry.is_error %}error-row{% else %}success-row{% endif %}">
+                    <td>{{ log_entry.message }}</td>
+                    <td>{% if log_entry.is_error %}Error{% else %}Success{% endif %}</td>
+                    <td>{{ log_entry.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Bootstrap JS CDN -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- DataTables JS CDN -->
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#logTable').DataTable();
+        });
+    </script>
+</body>
+</html>
+
+    
