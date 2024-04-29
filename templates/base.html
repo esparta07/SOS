@@ -84,20 +84,23 @@
                                 <!-- Recent notifications section -->
                                 <div class="recent-notifications" style="max-height: 300px; overflow-y: auto;">
                                     <ul style="padding: 0;">
-                                        {% if entries %} {% for notification in entries|slice:":3" %}
-                                        <li style="margin-bottom: 10px;">
-                                            <a style="display: block; padding: 10px; background-color: #f7f7f7; border-radius: 5px; text-decoration: none; color: #333;"
-                                               href="{% url 'notification' %}"> <!-- Replace "#" with the appropriate link if needed -->
-                                                {{ notification.message }} <!-- Assuming 'message' is the field containing notification message -->
-                                            </a>
-                                        </li>
-                                        {% endfor %} {% else %}
-                                        <p>No unsettled credit entries</p>
+                                        {% if entries %}
+                                            {% for entry in entries|slice:":3" %}
+                                                <li style="margin-bottom: 10px;">
+                                                    <a style="display: block; padding: 10px; background-color: #f7f7f7; border-radius: 5px; text-decoration: none; color: #333;"
+                                                        href="{% url 'credit_entry' entry.id %}"> <!-- Assuming entry.id is the identifier for each entry -->
+                                                        {{ entry.message }} <!-- Assuming 'message' is the field containing the notification message -->
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        {% else %}
+                                            <p>No unsettled credit entries</p>
                                         {% endif %}
                                     </ul>
-                                    <a class="dropdown-item view-more-btn" href="{% url 'notification' %}">View More</a>
+                                    <a class="dropdown-item view-more-btn" href="{% url 'credit_entry' %}">View More</a>
                                 </div>
                             </div>
+                        </div>
                         
                         <div class="dropdown d-inline-block ml-2">
                             <button type="button" class="btn header-item waves-effect"

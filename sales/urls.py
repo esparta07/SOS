@@ -30,15 +30,9 @@ urlpatterns = [
     path('process_uploaded_file/', views.process_uploaded_file, name='process_uploaded_file'),
 
     path('credit_entry/', views.credit_entry, name='credit_entry'),
-
-    path('notification/',views.notification,name ="notification"),
-    path('settle/<int:entry_id>/', views.settle_notification, name='settle_notification'),
+    path('credit_entry/<int:entry_id>/', views.credit_entry, name='credit_entry'),
 
     path('log/',views.log_page,name="log"),
-
-
-   
-    
 
 ]
 

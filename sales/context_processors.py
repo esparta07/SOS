@@ -1,7 +1,7 @@
 from  .models import Action, Client, CreditEntry
 from datetime import date, timedelta, datetime
-from django.utils import timezone
-
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from .views import client_list
 
 def action_counts(request):
     manual_not_completed_count = Action.objects.filter(type='manual', completed=False).count()
@@ -57,31 +57,43 @@ def check_upcoming_actions(request, days_in_future=2):
             'follow_up_today': 0,
         }
 
+
+
+    
 def notifications_context(request):
     if request.user.is_authenticated:
-        # Get the date parameter from the request's query string
         from_date_param = request.GET.get('from')
         to_date_param = request.GET.get('to')
+        account_param = request.GET.get('account_name')
 
+        # Start with the base queryset
+        entries = CreditEntry.objects.filter(collector=request.user, settle=False)
+
+        # Apply date range filter if provided
         if from_date_param and to_date_param:
-            # Convert the date strings to datetime objects
             from_date = datetime.strptime(from_date_param, '%Y-%m-%d').date()
             to_date = datetime.strptime(to_date_param, '%Y-%m-%d').date()
-            # Fetch CreditEntry objects within the specified date range for the current user, excluding settled entries
-            data = CreditEntry.objects.filter(date__range=[from_date, to_date], collector=request.user, settle=False).order_by('-id')
-        else:
-            # Fetch all unsettled CreditEntry objects for the current user
-            data = CreditEntry.objects.filter(collector=request.user, settle=False).order_by('-id')
+            entries = entries.filter(date__range=[from_date, to_date])
 
-        # Assign message for each entry
-        for entry in data:
+        # Apply account name filter if provided
+        if account_param:
+            # Filter entries by the account name
+            entries = entries.filter(account_name__account_name__icontains=account_param)
+
+        # Paginate the queryset
+        paginator = Paginator(entries.order_by('-id'), 10)  # 10 entries per page
+        page_number = request.GET.get('page')
+        try:
+            entries = paginator.page(page_number)
+        except PageNotAnInteger:
+            entries = paginator.page(1)
+        except EmptyPage:
+            entries = paginator.page(paginator.num_pages)
+
+        for entry in entries:
             entry.message = f"You have credited {entry.amount} for {entry.account_name}"
             entry.date = entry.date.strftime("%d %b, %Y")
 
-        # Return data
-        return {
-            "entries": data
-        }
+        return {"entries": entries}
     else:
-        # Return an empty dictionary if the user is not authenticated
         return {}

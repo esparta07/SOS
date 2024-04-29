@@ -4,7 +4,7 @@
 
 <div class = "card">
     <div class="card-body">
-        <h2>Credit Report</h2>
+        <h2>Add Credit</h2>
         <br>
         <form  method = "POST" action ="{% url 'credit_entry' %}">
             {% csrf_token %}
@@ -24,11 +24,6 @@
                         <label for="date" style="font-weight: bold;">Date:</label>
                         <input type="date" id="date" name="date" value="{{ form.date.value }}" style="width: 100%;">
                     </div>
-                    
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="collector" style="font-weight: bold;">Collector:</label><br>
-                        {{ form.collector }}
-                    </div>
                 </div>
             </div>
         </br>
@@ -40,6 +35,7 @@
         </div>
     </div>
 </div>
+{% include "notification.html" %}
 
 {% endblock content %}
             

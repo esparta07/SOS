@@ -32,6 +32,7 @@ from sales.tasks import bill_upload
 
 from sales.tasks import bill_upload
 from collections import defaultdict
+from .filters import ClientFilter
 
 
 # Create your views here.
@@ -752,39 +753,49 @@ def process_uploaded_file(request):
 
     return redirect('client')
 
-def credit_entry(request):
+@login_required
+def credit_entry(request, entry_id=None):
     if request.method == 'POST':
+        # Create or update credit entry
         form = CreditEntryForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Credit Entry added successfully")
-            # Clear the form by instantiating a new form object
-            return redirect('credit_entry')  # Redirect to the same page to display success message and clear form
+            account_name = form.cleaned_data['account_name']
+            amount = form.cleaned_data['amount']
+            date = form.cleaned_data['date']
+            try:
+                client = Client.objects.get(account_name=account_name)
+                collector = client.collector  # Retrieve the collector assigned to the client
+                CreditEntry.objects.create(
+                    account_name=account_name,
+                    amount=amount,
+                    collector=collector,
+                    date=date,
+                )
+                messages.success(request, "Credit Entry added successfully")
+            except Client.DoesNotExist:
+                # Handle case where client with provided account_name does not exist
+                messages.error(request, f"Client with account name '{account_name}' does not exist.")
+            return redirect('credit_entry')  # Redirect to the same page after form submission
     else:
-        # If the request method is not POST, create a new instance of the form
         form = CreditEntryForm()
 
-
-    # If form validation fails, display form errors
-    for field, errors in form.errors.items():
-        for error in errors:
-            messages.error(request, f"Error adding credit entry: {error}")
-
-    # Render the HTML template with the form instance in the context
-    return render(request, 'credit_track.html', {'form': form})
-
-@login_required
-def notification(request):
-    # Filter out unsettled entries for the current user (collector)
+    # Filter unsettled entries for the current user (collector)
     unsettled_entries = CreditEntry.objects.filter(collector=request.user, settle=False)
-    return render(request, 'notification.html', {'entries': unsettled_entries})
 
-def settle_notification(request, entry_id):
-    if request.method == 'POST':
-        entry = CreditEntry.objects.get(pk=entry_id)
-        entry.settle = True
-        entry.save()  # Save the entry with settle=True instead of deleting it
-    return redirect('notification')
+    # Handle settling of entry if entry_id is provided
+    if entry_id:
+        entry = get_object_or_404(CreditEntry, pk=entry_id)
+        if request.method == 'POST':
+            entry.settle = True
+            entry.save()  # Save the entry with settle=True instead of deleting it
+            return redirect('credit_entry')
+
+    return render(request, 'credit_track.html', {'form': form, 'entries': unsettled_entries})
+
+def client_list(request):
+    client_filter = ClientFilter(request.GET, queryset=Client.objects.all())
+    return render(request, 'credit_entry.html', {'filter': client_filter})
+
 
 def log_page(request):
     log_entries = LogEntry.objects.order_by('-timestamp')  

@@ -34,3 +34,26 @@ class ActionFilter(django_filters.FilterSet):
     class Meta:
         model = Action
         fields = ['short_name__collector', 'action_date', 'short_name', 'completed']
+
+
+class ClientFilter(django_filters.FilterSet):
+    account_name = django_filters.ModelChoiceFilter(
+        queryset=Client.objects.all(),  # Use queryset to specify available choices
+        
+        empty_label="Select Client",
+        label='',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        field_name='account_name' 
+    )
+    
+    # You can define a method to customize the queryset if needed
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Example: filter the queryset based on the collector
+        collector = kwargs.get('collector')
+        if collector:
+            self.queryset = self.queryset.filter(collector=collector)
+
+    class Meta:
+        model = Client
+        fields = ['account_name']

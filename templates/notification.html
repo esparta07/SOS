@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block content %}
+{% block content %}
 
 <style>
   /* CSS for flex layout */
@@ -29,8 +29,12 @@
 
 <div class="card">
   <div class="card-body">
-    <h2>Credit Notifications</h2>
+    <h2>Credit Report</h2>
     <form method="get" class="form">
+      <div class="form-group">
+        <label>Client:</label>
+        {{ filter.account_name }}
+      </div>
       <div class="form-group">
         <label for="fromDate">From:</label>
         <input
@@ -38,7 +42,7 @@
           id="fromDate"
           name="from"
           class="form-control"
-          value="{{ from_date }}"
+          value="{{ request.GET.from }}"
         />
       </div>
       <div class="form-group">
@@ -48,7 +52,7 @@
           id="toDate"
           name="to"
           class="form-control"
-          value="{{ to_date }}"
+          value="{{ request.GET.to }}"
         />
       </div>
       <button type="submit" class="btn btn-primary" id="filter">Filter</button>
@@ -58,10 +62,10 @@
     <div class="notification-item">
       <div>
         <strong><i class="fas fa-bell"></i></strong>
-        {{entry.account_name }} - {{ entry.amount }}
+        {{ entry.account_name }} - {{ entry.amount }}
       </div>
       <div>{{ entry.date }}</div>
-      <form action="{% url 'settle_notification' entry.id %}" method="post">
+      <form action="{% url 'credit_entry' entry.id %}" method="post">
         {% csrf_token %}
         <button type="submit" class="btn btn-primary">Settle</button>
       </form>
@@ -71,5 +75,4 @@
     {% endif %}
   </div>
 </div>
-
 {% endblock content %}
