@@ -11,52 +11,27 @@
     justify-content: space-between;
     margin-bottom: 10px; /* Adjust margin between items */
   }
-  .form {
-    display: flex;
-    gap: 2rem;
-    align-items: center; /* Align items vertically */
-  }
-  .form label {
-    flex: 0 0 auto; /* Make labels shrinkable */
-  }
-  .form input[type="date"] {
-    width: 20rem; /* Expand input to fill available space */
-  }
-  #filter {
-    height: 30px;
-  }
+  
 </style>
 
 <div class="card">
   <div class="card-body">
     <h2>Credit Report</h2>
-    <form method="get" class="form">
-      <div class="form-group">
-        <label>Client:</label>
-        {{ filter.account_name }}
+    <form method="get" action="" class="form-inline" formnovalidate>
+      <div class="form-group mx-2">
+          {{ credit_filter.form.account_name }}
       </div>
-      <div class="form-group">
-        <label for="fromDate">From:</label>
-        <input
-          type="date"
-          id="fromDate"
-          name="from"
-          class="form-control"
-          value="{{ request.GET.from }}"
-        />
-      </div>
-      <div class="form-group">
-        <label for="toDate">To:</label>
-        <input
-          type="date"
-          id="toDate"
-          name="to"
-          class="form-control"
-          value="{{ request.GET.to }}"
-        />
-      </div>
+      <div class="form-group mx-2">
+          <label for="{{ credit_filter.form.date.id_for_label }}"></label>
+          <input type="date" name="action_date_from" class="form-control" placeholder="From" value="{{ request.GET.action_date_from }}">
+<input type="date" name="action_date_to" class="form-control" placeholder="To" value="{{ request.GET.action_date_to }}">
+ </div>
       <button type="submit" class="btn btn-primary" id="filter">Filter</button>
-    </form>
+      <a class="text-danger mx-2" href="?{% for key in request.GET %}{% if key != 'page' %}&{{ key }}={% endif %}{% endfor %}">
+          <b>Clear</b>
+      </a>
+  </form>
+  
     <hr />
     {% if entries %} {% for entry in entries %}
     <div class="notification-item">

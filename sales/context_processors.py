@@ -1,7 +1,8 @@
 from  .models import Action, Client, CreditEntry
 from datetime import date, timedelta, datetime
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .views import client_list
+# from .views import client_list
+from .filters import ClientFilter
 
 def action_counts(request):
     manual_not_completed_count = Action.objects.filter(type='manual', completed=False).count()
@@ -59,41 +60,24 @@ def check_upcoming_actions(request, days_in_future=2):
 
 
 
-    
-def notifications_context(request):
+def notifications(request):
     if request.user.is_authenticated:
-        from_date_param = request.GET.get('from')
-        to_date_param = request.GET.get('to')
-        account_param = request.GET.get('account_name')
-
-        # Start with the base queryset
-        entries = CreditEntry.objects.filter(collector=request.user, settle=False)
-
-        # Apply date range filter if provided
-        if from_date_param and to_date_param:
-            from_date = datetime.strptime(from_date_param, '%Y-%m-%d').date()
-            to_date = datetime.strptime(to_date_param, '%Y-%m-%d').date()
-            entries = entries.filter(date__range=[from_date, to_date])
-
-        # Apply account name filter if provided
-        if account_param:
-            # Filter entries by the account name
-            entries = entries.filter(account_name__account_name__icontains=account_param)
-
-        # Paginate the queryset
-        paginator = Paginator(entries.order_by('-id'), 10)  # 10 entries per page
-        page_number = request.GET.get('page')
-        try:
-            entries = paginator.page(page_number)
-        except PageNotAnInteger:
-            entries = paginator.page(1)
-        except EmptyPage:
-            entries = paginator.page(paginator.num_pages)
-
-        for entry in entries:
-            entry.message = f"You have credited {entry.amount} for {entry.account_name}"
-            entry.date = entry.date.strftime("%d %b, %Y")
-
-        return {"entries": entries}
+        # Fetch all unsettled CreditEntry objects for the current user
+        unsettled_entries = CreditEntry.objects.filter(collector=request.user, settle=False)
+        
+        # Filter entries that are older than yesterday
+        yesterday = datetime.now() - timedelta(days=1)
+        older_entries = unsettled_entries.filter(date__lte=yesterday)
+        
+        # Get the 10 newest older entries
+        oldest_entries = older_entries.order_by('-date')[:10]
+        
+        # Count the number of older entries
+        older_entries_count = older_entries.count()
+        
+        return {
+            'notifications': oldest_entries,
+            'notifications_count': older_entries_count,
+        }
     else:
         return {}

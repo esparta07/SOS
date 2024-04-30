@@ -102,10 +102,38 @@ class ExtendActionForm(forms.Form):
 class CreditEntryForm(forms.ModelForm):
     class Meta:
         model = CreditEntry
-        fields = ['account_name', 'amount', 'collector', 'date']
+        fields = ['account_name', 'amount', 'date']
+
+    account_name = forms.ModelChoiceField(
+        queryset=Client.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control select2'}),
+    )
+
+    amount = forms.DecimalField(
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        required=True
+    )
+
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        required=False
+    )
+
+    def __init__(self, user=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Dynamically set the queryset for the account_name field based on the user
+        if user and user.is_authenticated:
+            self.fields['account_name'].queryset = Client.objects.filter(collector=user)
+        
+        # Add form control to other fields if needed
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control'})
 
     def clean_amount(self):
-        amount = self.cleaned_data['amount']
+        amount = self.cleaned_data.get('amount')
+        if amount is None:
+            raise forms.ValidationError('Amount is required')
         if amount < 0:
             raise forms.ValidationError('Amount must be positive')
         return amount

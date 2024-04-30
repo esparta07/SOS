@@ -4,7 +4,7 @@ from django import forms
 from django_filters.widgets import RangeWidget
 
 from account.models import User
-from .models import Action, Client
+from .models import Action, Client,CreditEntry
 
 class ActionFilter(django_filters.FilterSet):
     short_name__collector = django_filters.ModelChoiceFilter(
@@ -57,3 +57,25 @@ class ClientFilter(django_filters.FilterSet):
     class Meta:
         model = Client
         fields = ['account_name']
+        
+class CreditFilter(django_filters.FilterSet):
+    account_name = django_filters.ModelChoiceFilter(
+        queryset=Client.objects.none(),
+        empty_label='Select Company',
+        label='',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    
+    date = django_filters.DateFromToRangeFilter(
+        widget=django_filters.widgets.RangeWidget(attrs={'class': 'form-control', 'placeholder': 'Date Filter'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        if request and request.user.is_authenticated:
+            self.filters['account_name'].field.queryset = Client.objects.filter(collector=request.user)
+
+    class Meta:
+        model = CreditEntry
+        fields = ['account_name', 'date']

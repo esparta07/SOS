@@ -3,11 +3,8 @@ from datetime import datetime, timedelta, date
 from django.shortcuts import get_object_or_404, redirect, render
 from .models import Action, CreditEntry
 from .filters import ActionFilter
-
 from .models import Client, Bill, Action
-
 from .models import Client, Bill, Action,LogEntry
-
 from django.contrib import messages
 from .forms import ExcelUploadForm, ClientForm, ActionUpdateForm, ActionCreationForm, ExtendActionForm,SendSMSForm,ClientUploadForm,CreditEntryForm
 from django.core.exceptions import  ObjectDoesNotExist
@@ -30,9 +27,8 @@ from account.utils import check_role_admin, check_role_user
 
 from sales.tasks import bill_upload
 
-from sales.tasks import bill_upload
 from collections import defaultdict
-from .filters import ClientFilter
+from .filters import CreditFilter
 
 
 # Create your views here.
@@ -498,7 +494,6 @@ def action(request):
    
     return render(request, 'action.html' , context)
 
-
 def calculate_total_cycles_for_client(client):
     total_cycles = defaultdict(float)  # Initialize a dictionary to store total cycles for the client
     
@@ -598,7 +593,6 @@ def calculate_percentages(aging_data, total_amount):
         'percentage_61_90_days': '{:.2f}'.format(percentage_61_90_days),
         'percentage_90_days_plus': '{:.2f}'.format(percentage_90_days_plus),
     }
-
 
 @login_required(login_url='login')
 def extend_action_dates(request, client_id):
@@ -753,48 +747,59 @@ def process_uploaded_file(request):
 
     return redirect('client')
 
-@login_required
+
 def credit_entry(request, entry_id=None):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    form = CreditEntryForm(request.user, request.POST or None)
+    
     if request.method == 'POST':
-        # Create or update credit entry
-        form = CreditEntryForm(request.POST)
         if form.is_valid():
             account_name = form.cleaned_data['account_name']
             amount = form.cleaned_data['amount']
             date = form.cleaned_data['date']
-            try:
-                client = Client.objects.get(account_name=account_name)
-                collector = client.collector  # Retrieve the collector assigned to the client
-                CreditEntry.objects.create(
-                    account_name=account_name,
-                    amount=amount,
-                    collector=collector,
-                    date=date,
-                )
-                messages.success(request, "Credit Entry added successfully")
-            except Client.DoesNotExist:
-                # Handle case where client with provided account_name does not exist
-                messages.error(request, f"Client with account name '{account_name}' does not exist.")
-            return redirect('credit_entry')  # Redirect to the same page after form submission
-    else:
-        form = CreditEntryForm()
+            
+            client, created = Client.objects.get_or_create(account_name=account_name, collector=request.user)
+            CreditEntry.objects.create(
+                account_name=client,
+                amount=amount,
+                collector=request.user,
+                date=date,
+            )
+            messages.success(request, "Credit Entry added successfully")
+            return redirect('credit_entry')
 
-    # Filter unsettled entries for the current user (collector)
     unsettled_entries = CreditEntry.objects.filter(collector=request.user, settle=False)
 
-    # Handle settling of entry if entry_id is provided
     if entry_id:
         entry = get_object_or_404(CreditEntry, pk=entry_id)
         if request.method == 'POST':
             entry.settle = True
-            entry.save()  # Save the entry with settle=True instead of deleting it
+            entry.save()
             return redirect('credit_entry')
 
-    return render(request, 'credit_track.html', {'form': form, 'entries': unsettled_entries})
+    # Process the date range filter
+    date_from = request.GET.get('action_date_from')
+    date_to = request.GET.get('action_date_to')
 
-def client_list(request):
-    client_filter = ClientFilter(request.GET, queryset=Client.objects.all())
-    return render(request, 'credit_entry.html', {'filter': client_filter})
+
+    if date_from and date_to:
+        date_from = datetime.strptime(date_from, "%Y-%m-%d")
+        date_to = datetime.strptime(date_to, "%Y-%m-%d")
+        unsettled_entries = unsettled_entries.filter(date__range=[date_from, date_to])
+
+
+    # Apply CreditFilter with the filtered queryset
+    credit_filter = CreditFilter(request.GET, request=request, queryset=unsettled_entries)
+
+    context = {
+        'form': form,
+        'entries': credit_filter.qs,  # Use filtered queryset
+        'credit_filter': credit_filter,
+    }
+    return render(request, 'credit_track.html', context)
+
 
 
 def log_page(request):

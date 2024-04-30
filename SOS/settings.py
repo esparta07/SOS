@@ -73,7 +73,7 @@ TEMPLATES = [
                 'sales.context_processors.action_counts',
                 'sales.context_processors.check_upcoming_actions',
 
-                'sales.context_processors.notifications_context',
+                'sales.context_processors.notifications',
                 
 
             ],

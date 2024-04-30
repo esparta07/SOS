@@ -10,23 +10,26 @@
             {% csrf_token %}
             <div class="row">
                 <div class="col-lg-6">
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="account_name" style="font-weight: bold;">Client Name:</label><br>
-                        {{ form.account_name }}
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="amount" style="font-weight: bold;">Amount:</label>
-                        <input type="number" id="amount" name="amount" value="{{ form.amount.value }}" style="width: 100%;">
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="date" style="font-weight: bold;">Date:</label>
-                        <input type="date" id="date" name="date" value="{{ form.date.value }}" style="width: 100%;">
-                    </div>
+                    <label>Date:</label>
+                    {{ form.date }}
                 </div>
             </div>
-        </br>
+            <br>
+            <div class="row">              
+                <div class="col-lg-6">
+                    <label>Client:</label>
+                {{ form.account_name }}
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <div class="col-lg-6">
+                    <label>Amount</label>
+                    {{ form.amount }}
+                </div>
+            </div>
+            <br>
+        
         <button class="btn btn-warning btn-lg waves-effect waves-light" type="submit">Submit</button>
         </form>
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
