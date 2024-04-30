@@ -752,7 +752,7 @@ def credit_entry(request, entry_id=None):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    form = CreditEntryForm(request.user, request.POST or None)
+    form = CreditEntryForm( request.POST or None)
     
     if request.method == 'POST':
         if form.is_valid():
@@ -799,8 +799,6 @@ def credit_entry(request, entry_id=None):
         'credit_filter': credit_filter,
     }
     return render(request, 'credit_track.html', context)
-
-
 
 def log_page(request):
     log_entries = LogEntry.objects.order_by('-timestamp')  
