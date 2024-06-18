@@ -156,11 +156,6 @@
                 </div>
                 <div class="amount">{{ entry.amount }}</div>
                 <div>{{ entry.date }}</div>
-                <div>{{ entry.collector }}</div> <!-- Displaying the collector -->
-                <form action="{% url 'credit_entry' entry.id %}" method="post">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-primary">Settle</button>
-                </form>
               </div>
             {% endfor %}
           {% else %}
