@@ -754,7 +754,7 @@ def credit_entry(request, entry_id=None):
         return redirect('login')
 
     form = CreditEntryForm(request.POST or None)  # Remove request.user if not needed in the form
-
+    
     if request.method == 'POST':
         if form.is_valid():
             account_name = form.cleaned_data['account_name']
@@ -798,8 +798,6 @@ def credit_entry(request, entry_id=None):
         'credit_filter': credit_filter,
     }
     return render(request, 'credit_track.html', context)
-
-
 
 def log_page(request):
     log_entries = LogEntry.objects.order_by('-timestamp')  
