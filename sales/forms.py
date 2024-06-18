@@ -1,6 +1,7 @@
-from datetime import date
+
 from django import forms
-from .models import Client,Action,Bill,CreditEntry
+from .models import Client,Action,CreditEntry
+import django_filters
 
 from django.utils import timezone
 
@@ -119,16 +120,12 @@ class CreditEntryForm(forms.ModelForm):
         required=False
     )
 
-    def __init__(self, user=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(CreditEntryForm, self).__init__(*args, **kwargs)
         
-        # Dynamically set the queryset for the account_name field based on the user
-        if user and user.is_authenticated:
-            self.fields['account_name'].queryset = Client.objects.filter(collector=user)
-        
-        # Add form control to other fields if needed
-        for field_name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control'})
+        # Customize the widgets and add additional attributes as needed
+        self.fields['account_name'].queryset = Client.objects.all()    
+         
 
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')

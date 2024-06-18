@@ -208,6 +208,11 @@
                                 </a>
                                 </li>
                                 
+                                <li>
+                                    <a id="credit-entry-link" class="waves-effect" href="{% url 'credit_entry' %}">
+                                        <i class="mdi mdi-credit-card"></i><span>Credit</span>
+                                    </a>
+                                </li>
                             {% elif user.role == user.USER %}
                                 <li>
                                     <a href="{% url "account:userdashboard" %}" class="waves-effect"><i class="mdi mdi-home-analytics"></i><span>Dashboard</span></a>

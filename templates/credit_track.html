@@ -1,45 +1,79 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block content %}
 
-{% block content %}
-
-<div class = "card">
-    <div class="card-body">
-        <h2>Add Credit</h2>
-        <br>
-        <form  method = "POST" action ="{% url 'credit_entry' %}">
-            {% csrf_token %}
-            <div class="row">
-                <div class="col-lg-6">
-                    <label>Date:</label>
-                    {{ form.date }}
-                </div>
-            </div>
-            <br>
-            <div class="row">              
-                <div class="col-lg-6">
-                    <label>Client:</label>
-                {{ form.account_name }}
-                </div>
-            </div>
-            <br>
-            <div class="row">
-                <div class="col-lg-6">
-                    <label>Amount</label>
-                    {{ form.amount }}
-                </div>
-            </div>
-            <br>
-        
-        <button class="btn btn-warning btn-lg waves-effect waves-light" type="submit">Submit</button>
-        </form>
-        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-            <!-- Load message -->
-            {% include 'alerts2.html' %}
+<div class="card">
+  <div class="card-body">
+    <h2>Add Credit</h2>
+    <br />
+    <form method="POST" action="{% url 'credit_entry' %}">
+      {% csrf_token %}
+      <div class="row">
+        <div class="col-lg-6">
+          <label>Date:</label>
+          {{ form.date }}
         </div>
+      </div>
+      <br />
+      <div class="row">
+        <div class="col-lg-6">
+          <label>Client:</label>
+          <select
+            id="id_account_name"
+            name="account_name"
+            class="form-control select2-client"
+            data-toggle="select2"
+          >
+            <option value="">Select client</option>
+            {% for client in form.account_name.field.queryset %}
+            <option value="{{ client.pk }}">{{ client }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <br />
+      <div class="row">
+        <div class="col-lg-6">
+          <label>Amount:</label>
+          {{ form.amount }}
+        </div>
+      </div>
+      <br />
+      <button
+        class="btn btn-warning btn-lg waves-effect waves-light"
+        type="submit"
+      >
+        Submit
+      </button>
+    </form>
+    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+      <!-- Load message -->
+      {% include 'alerts2.html' %}
     </div>
+  </div>
 </div>
-{% include "notification.html" %}
 
-{% endblock content %}
-            
-            
+<!-- Include Select2 CSS -->
+<link
+  href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css"
+  rel="stylesheet"
+/>
+
+<!-- Include jQuery (if not already included) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Include Select2 JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+<script>
+  $(document).ready(function () {
+    // Initialize Select2 for the client field
+    $(".select2-client").select2();
+
+    // Set today's date for the date field if it's empty
+    const today = new Date().toISOString().split("T")[0];
+    if (!$("#id_date").val()) {
+      $("#id_date").val(today);
+    }
+  });
+</script>
+
+{% include "notification.html" %} {% endblock content %}

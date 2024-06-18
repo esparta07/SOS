@@ -29,6 +29,7 @@ from sales.tasks import bill_upload
 
 from collections import defaultdict
 from .filters import CreditFilter
+from django.utils.dateparse import parse_date
 
 
 # Create your views here.
@@ -752,8 +753,8 @@ def credit_entry(request, entry_id=None):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    form = CreditEntryForm(request.user, request.POST or None)
-    
+    form = CreditEntryForm(request.POST or None)  # Remove request.user if not needed in the form
+
     if request.method == 'POST':
         if form.is_valid():
             account_name = form.cleaned_data['account_name']
@@ -783,12 +784,10 @@ def credit_entry(request, entry_id=None):
     date_from = request.GET.get('action_date_from')
     date_to = request.GET.get('action_date_to')
 
-
     if date_from and date_to:
         date_from = datetime.strptime(date_from, "%Y-%m-%d")
         date_to = datetime.strptime(date_to, "%Y-%m-%d")
         unsettled_entries = unsettled_entries.filter(date__range=[date_from, date_to])
-
 
     # Apply CreditFilter with the filtered queryset
     credit_filter = CreditFilter(request.GET, request=request, queryset=unsettled_entries)

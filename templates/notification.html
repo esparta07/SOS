@@ -1,68 +1,192 @@
 {% block content %}
+  {% if user.role == user.ADMIN %}
+    <style>
+      .notification-item {
+        display: flex;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .amount {
+        text-align: left;
+      }
+    </style>
 
-<style>
-  /* CSS for flex layout */
-  .notification-item {
-    display: flex;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px; /* Adjust margin between items */
-  }
-</style>
-
-<div class="card">
-  <div class="card-body">
-    <h2>Credit Report</h2>
-    <form method="get" action="" class="form-inline" formnovalidate>
-      <div class="form-group mx-2">{{ credit_filter.form.account_name }}</div>
-      <div class="form-group mx-2">
-        <label for="{{ credit_filter.form.date.id_for_label }}"></label>
-        <input
-          type="date"
-          name="action_date_from"
-          class="form-control"
-          placeholder="From"
-          value="{{ request.GET.action_date_from }}"
-        />
-        <input
-          type="date"
-          name="action_date_to"
-          class="form-control"
-          placeholder="To"
-          value="{{ request.GET.action_date_to }}"
-        />
-      </div>
-      <button type="submit" class="btn btn-primary" id="filter">Filter</button>
-      <a
-        class="text-danger mx-2"
-        href="?{% for key in request.GET %}{% if key != 'page' %}&{{ key }}={% endif %}{% endfor %}"
-      >
-        <b>Clear</b>
-      </a>
-    </form>
-
-    <hr />
-    <div style="height: 500px; overflow-y: auto">
-      {% if entries %} {% for entry in entries %}
-      <div class="notification-item">
-        <div>
-          <strong><i class="fas fa-bell"></i></strong>
-          {{ entry.account_name }}
-        </div>
-        <div>{{ entry.amount }}</div>
-        <div>{{ entry.date }}</div>
-        <form action="{% url 'credit_entry' entry.id %}" method="post">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-primary">Settle</button>
+    <div class="card">
+      <div class="card-body">
+        <h2>Credit Report</h2>
+        <form method="get" action="" class="form-inline" formnovalidate>
+          <div class="form-group mx-2">
+            <select id="id_account_name" name="account_name" class="form-control select2-account-name" data-toggle="select2">
+              <option value="">Select client</option>
+              {% for client in credit_filter.form.account_name.field.queryset %}
+                <option value="{{ client }}" {% if request.GET.account_name == client|stringformat:"s" %}selected{% endif %}>{{ client }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group mx-2">
+            <select id="id_collector" name="collector" class="form-control select2-collector" data-toggle="select2">
+              <option value="">Select Collector</option>
+              {% for collector in credit_filter.form.collector.field.queryset %}
+                <option value="{{ collector.id }}" {% if request.GET.collector == collector.id|stringformat:"s" %}selected{% endif %}>{{ collector }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group mx-2">
+            <label for="{{ credit_filter.form.date.id_for_label }}"></label>
+            <input
+              type="date"
+              name="action_date_from"
+              class="form-control"
+              placeholder="From"
+              value="{{ request.GET.action_date_from }}"
+            />
+            <input
+              type="date"
+              name="action_date_to"
+              class="form-control"
+              placeholder="To"
+              value="{{ request.GET.action_date_to }}"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary" id="filter">Filter</button>
+          <a
+            class="text-danger mx-2"
+            href="?{% for key in request.GET %}{% if key != 'page' %}&{{ key }}={% endif %}{% endfor %}"
+          >
+            <b>Clear</b>
+          </a>
         </form>
+
+        <hr />
+        <div style="height: 500px; overflow-y: auto">
+          {% if entries %}
+            {% for entry in entries %}
+              <div class="notification-item">
+                <div>
+                  <strong><i class="fas fa-bell"></i></strong>
+                  {{ entry.account_name }}
+                </div>
+                <div class="amount">{{ entry.amount }}</div>
+                <div>{{ entry.date }}</div>
+                <div>{{ entry.collector }}</div> <!-- Displaying the collector -->
+                <form action="{% url 'credit_entry' entry.id %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary">Settle</button>
+                </form>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p>No unsettled credit entries</p>
+          {% endif %}
+        </div>
       </div>
-      {% endfor %} {% else %}
-      <p>No unsettled credit entries</p>
-      {% endif %}
     </div>
-  </div>
-</div>
+  {% elif user.role == user.USER %}
+    <style>
+      .notification-item {
+        display: flex;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        align-items: left;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .amount {
+        text-align: left;
+      }
+    </style>
+
+    <div class="card">
+      <div class="card-body">
+        <h2>Credit Report</h2>
+        <form method="get" action="" class="form-inline" formnovalidate>
+          <div class="form-group mx-2">
+            <select id="id_account_name" name="account_name" class="form-control select2-account-name" data-toggle="select2">
+              <option value="">Select client</option>
+              {% for client in credit_filter.form.account_name.field.queryset %}
+                <option value="{{ client }}" {% if request.GET.account_name == client|stringformat:"s" %}selected{% endif %}>{{ client }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group mx-2">
+            <input
+              type="hidden"
+              name="account_name"
+              value="{{ user.client.pk }}"
+            />
+          </div>
+          <div class="form-group mx-2">
+            <label for="{{ credit_filter.form.date.id_for_label }}"></label>
+            <input
+              type="date"
+              name="action_date_from"
+              class="form-control"
+              placeholder="From"
+              value="{{ request.GET.action_date_from }}"
+            />
+            <input
+              type="date"
+              name="action_date_to"
+              class="form-control"
+              placeholder="To"
+              value="{{ request.GET.action_date_to }}"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary" id="filter">Filter</button>
+          <a
+            class="text-danger mx-2"
+            href="?{% for key in request.GET %}{% if key != 'page' %}&{{ key }}={% endif %}{% endfor %}"
+          >
+            <b>Clear</b>
+          </a>
+        </form>
+
+        <hr />
+        <div style="height: 500px; overflow-y: auto">
+          {% if entries %}
+            {% for entry in entries %}
+              <div class="notification-item">
+                <div>
+                  <strong class='Name'><i class="fas fa-bell"></i></strong>
+                  {{ entry.account_name }}
+                </div>
+                <div class="amount">{{ entry.amount }}</div>
+                <div>{{ entry.date }}</div>
+                <div>{{ entry.collector }}</div> <!-- Displaying the collector -->
+                <form action="{% url 'credit_entry' entry.id %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary">Settle</button>
+                </form>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p>No unsettled credit entries</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Include Select2 CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+
+  <!-- Include jQuery (if not already included) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Include Select2 JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+  <script>
+    $(document).ready(function () {
+      // Initialize Select2 for the account_name field in the filter form
+      $(".select2-account-name").select2();
+
+      // Initialize Select2 for the collector field in the filter form
+      $(".select2-collector").select2();
+    });
+  </script>
 {% endblock content %}

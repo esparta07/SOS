@@ -42,7 +42,7 @@ class ClientFilter(django_filters.FilterSet):
         
         empty_label="Select Client",
         label='',
-        widget=forms.Select(attrs={'class': 'form-control'}),
+        widget=forms.Select(attrs={'class': 'form-control select2-client'}),
         field_name='account_name' 
     )
     
